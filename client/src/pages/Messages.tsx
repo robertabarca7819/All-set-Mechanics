@@ -36,13 +36,10 @@ export default function Messages() {
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!selectedConversationId) throw new Error("No conversation selected");
-      return apiRequest("/api/messages", {
-        method: "POST",
-        body: JSON.stringify({
-          conversationId: selectedConversationId,
-          senderId: currentUserId,
-          content,
-        }),
+      return apiRequest("POST", "/api/messages", {
+        conversationId: selectedConversationId,
+        senderId: currentUserId,
+        content,
       });
     },
     onSuccess: () => {

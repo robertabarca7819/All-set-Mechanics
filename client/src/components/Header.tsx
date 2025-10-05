@@ -20,9 +20,9 @@ export function Header() {
               Home
             </a>
           </Link>
-          <Link href="/how-it-works">
-            <a className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-how">
-              How It Works
+          <Link href="/messages">
+            <a className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-messages">
+              Messages
             </a>
           </Link>
           <Link href="/provider-dashboard">

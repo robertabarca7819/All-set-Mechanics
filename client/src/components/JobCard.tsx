@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, DollarSign } from "lucide-react";
+import { MapPin, Clock, DollarSign, MessageSquare } from "lucide-react";
 
 export type JobStatus = "requested" | "accepted" | "payment_pending" | "confirmed" | "completed";
 
@@ -17,6 +17,7 @@ interface JobCardProps {
   status: JobStatus;
   onAccept?: () => void;
   onViewDetails?: () => void;
+  onMessage?: () => void;
 }
 
 const statusConfig: Record<JobStatus, { label: string; className: string }> = {
@@ -38,6 +39,7 @@ export function JobCard({
   status,
   onAccept,
   onViewDetails,
+  onMessage,
 }: JobCardProps) {
   const statusInfo = statusConfig[status];
 
@@ -80,7 +82,13 @@ export function JobCard({
             <span className="text-lg">{estimatedPrice}</span>
           </div>
         )}
-        <div className="flex gap-2 ml-auto">
+        <div className="flex gap-2 ml-auto flex-wrap">
+          {onMessage && (
+            <Button variant="outline" size="sm" onClick={onMessage} data-testid="button-message">
+              <MessageSquare className="h-4 w-4 mr-1" />
+              Message
+            </Button>
+          )}
           {onViewDetails && (
             <Button variant="outline" size="sm" onClick={onViewDetails} data-testid="button-view-details">
               View Details

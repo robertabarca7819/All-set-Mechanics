@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { StatsCard } from "@/components/StatsCard";
@@ -11,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function ProviderDashboard() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
 
@@ -25,6 +27,10 @@ export default function ProviderDashboard() {
   const handleInitiatePayment = (job: any) => {
     setSelectedJob(job);
     setPaymentModalOpen(true);
+  };
+
+  const handleMessage = () => {
+    setLocation("/messages");
   };
 
   const mockJobs = [
@@ -126,6 +132,7 @@ export default function ProviderDashboard() {
                         {...job}
                         onAccept={() => handleAcceptJob(job.id)}
                         onViewDetails={() => console.log("View details:", job.id)}
+                        onMessage={handleMessage}
                       />
                     ))}
                 </div>
@@ -140,6 +147,7 @@ export default function ProviderDashboard() {
                         <JobCard
                           {...job}
                           onViewDetails={() => console.log("View details:", job.id)}
+                          onMessage={handleMessage}
                         />
                         <Button
                           className="w-full"
