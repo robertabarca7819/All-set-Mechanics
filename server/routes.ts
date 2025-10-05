@@ -14,7 +14,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "userId is required" });
       }
       const conversations = await storage.getConversationsByUserId(userId);
-      res.json(conversations);
+      
+      const conversationsWithJobsAndMessages = await Promise.all(
+        conversations.map(async (conv) => {
+          const job = await storage.getJob(conv.jobId);
+          const lastMessage = await storage.getLastMessageByConversationId(conv.id);
+          return { ...conv, job, lastMessage: lastMessage?.content };
+        })
+      );
+      
+      res.json(conversationsWithJobsAndMessages);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch conversations" });
     }
@@ -57,10 +66,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const conversation = await storage.getConversation(message.conversationId);
       if (conversation) {
+        const job = await storage.getJob(conversation.jobId);
+        const wsPayload = {
+          type: "new_message",
+          message,
+          conversationId: conversation.id,
+          jobTitle: job?.title,
+        };
+        
         [conversation.customerId, conversation.providerId].forEach(userId => {
           const client = wsClients.get(userId);
           if (client && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: "new_message", message }));
+            client.send(JSON.stringify(wsPayload));
           }
         });
       }

@@ -18,6 +18,7 @@ export interface IStorage {
   
   createMessage(message: InsertMessage): Promise<Message>;
   getMessagesByConversationId(conversationId: string): Promise<Message[]>;
+  getLastMessageByConversationId(conversationId: string): Promise<Message | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -25,12 +26,80 @@ export class MemStorage implements IStorage {
   private jobs: Map<string, Job>;
   private conversations: Map<string, Conversation>;
   private messages: Map<string, Message>;
+  private lastMessageByConversationId: Map<string, Message>;
 
   constructor() {
     this.users = new Map();
     this.jobs = new Map();
     this.conversations = new Map();
     this.messages = new Map();
+    this.lastMessageByConversationId = new Map();
+    this.seedData();
+  }
+
+  private seedData() {
+    const job1: Job = {
+      id: "job-1",
+      serviceType: "Brake Service",
+      title: "Front brake pads replacement",
+      description: "Squeaking noise when braking. Need front brake pads replaced on 2018 Honda Civic.",
+      location: "San Francisco, CA 94105",
+      preferredDate: "2025-10-15",
+      preferredTime: "14:00",
+      estimatedPrice: 250,
+      status: "accepted",
+      customerId: "customer-1",
+      providerId: "demo-user-1",
+      createdAt: new Date("2025-10-05T10:00:00Z"),
+    };
+    this.jobs.set(job1.id, job1);
+
+    const conv1: Conversation = {
+      id: "conv-1",
+      jobId: job1.id,
+      customerId: "customer-1",
+      providerId: "demo-user-1",
+      createdAt: new Date("2025-10-05T10:30:00Z"),
+    };
+    this.conversations.set(conv1.id, conv1);
+
+    const msg1: Message = {
+      id: "msg-1",
+      conversationId: conv1.id,
+      senderId: "customer-1",
+      content: "Hi! I noticed my brakes have been making a squeaking sound. Can you help?",
+      createdAt: new Date("2025-10-05T10:35:00Z"),
+    };
+    this.messages.set(msg1.id, msg1);
+
+    const msg2: Message = {
+      id: "msg-2",
+      conversationId: conv1.id,
+      senderId: "demo-user-1",
+      content: "Absolutely! I'd be happy to help. Based on your description, it sounds like your brake pads might need replacement. I can take a look at your 2018 Honda Civic.",
+      createdAt: new Date("2025-10-05T10:40:00Z"),
+    };
+    this.messages.set(msg2.id, msg2);
+
+    const msg3: Message = {
+      id: "msg-3",
+      conversationId: conv1.id,
+      senderId: "customer-1",
+      content: "That would be great! What's the estimated cost?",
+      createdAt: new Date("2025-10-05T10:45:00Z"),
+    };
+    this.messages.set(msg3.id, msg3);
+
+    const msg4: Message = {
+      id: "msg-4",
+      conversationId: conv1.id,
+      senderId: "demo-user-1",
+      content: "For a complete front brake pad replacement on a 2018 Honda Civic, I estimate around $250 including parts and labor. I can come to your location on October 15th at 2 PM if that works for you.",
+      createdAt: new Date("2025-10-05T11:00:00Z"),
+    };
+    this.messages.set(msg4.id, msg4);
+    
+    this.lastMessageByConversationId.set(conv1.id, msg4);
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -115,6 +184,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date()
     };
     this.messages.set(id, message);
+    this.lastMessageByConversationId.set(message.conversationId, message);
     return message;
   }
 
@@ -122,6 +192,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.messages.values())
       .filter((msg) => msg.conversationId === conversationId)
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  }
+
+  async getLastMessageByConversationId(conversationId: string): Promise<Message | undefined> {
+    return this.lastMessageByConversationId.get(conversationId);
   }
 }
 

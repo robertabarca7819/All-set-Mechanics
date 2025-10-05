@@ -15,10 +15,11 @@ export default function Messages() {
   const currentUserId = "demo-user-1";
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 
-  const { data: conversations = [] } = useQuery<(Conversation & { job?: Job })[]>({
+  const { data: conversations = [] } = useQuery<(Conversation & { job?: Job; lastMessage?: string })[]>({
     queryKey: ["/api/conversations", currentUserId],
-    queryFn: async () => {
-      const response = await fetch(`/api/conversations?userId=${currentUserId}`);
+    queryFn: async ({ queryKey }) => {
+      const [, userId] = queryKey;
+      const response = await fetch(`/api/conversations?userId=${userId}`);
       return response.json();
     },
   });
@@ -44,15 +45,16 @@ export default function Messages() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedConversationId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations", currentUserId] });
     },
   });
 
   const handleNewMessage = useCallback((data: any) => {
     if (data.type === "new_message") {
-      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages", data.conversationId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations", currentUserId] });
     }
-  }, []);
+  }, [currentUserId]);
 
   useWebSocket({ userId: currentUserId, onMessage: handleNewMessage });
 
