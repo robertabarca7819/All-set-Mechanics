@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
+import { z } from "zod";
 import { storage } from "./storage";
 import { insertConversationSchema, insertMessageSchema } from "@shared/schema";
 
@@ -85,6 +86,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(message);
     } catch (error) {
       res.status(400).json({ error: "Invalid message data" });
+    }
+  });
+
+  app.get("/api/jobs", async (req, res) => {
+    try {
+      const jobs = await storage.getAllJobs();
+      res.json(jobs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch jobs" });
+    }
+  });
+
+  app.get("/api/jobs/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const job = await storage.getJob(id);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      res.json(job);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job" });
+    }
+  });
+
+  app.patch("/api/jobs/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateSchema = z.object({
+        status: z.enum(["requested", "accepted", "payment_pending", "confirmed", "completed"]).optional(),
+        providerId: z.string().optional(),
+        estimatedPrice: z.number().optional(),
+      });
+      const updates = updateSchema.parse(req.body);
+      const updatedJob = await storage.updateJob(id, updates);
+      if (!updatedJob) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      res.json(updatedJob);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid update data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update job" });
     }
   });
 

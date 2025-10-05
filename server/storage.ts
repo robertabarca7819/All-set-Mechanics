@@ -100,6 +100,38 @@ export class MemStorage implements IStorage {
     this.messages.set(msg4.id, msg4);
     
     this.lastMessageByConversationId.set(conv1.id, msg4);
+
+    const job2: Job = {
+      id: "job-2",
+      serviceType: "Oil Change",
+      title: "Synthetic oil change",
+      description: "Regular maintenance oil change for 2020 Toyota Camry, synthetic oil preferred.",
+      location: "Oakland, CA 94612",
+      preferredDate: "2025-10-16",
+      preferredTime: "10:00",
+      estimatedPrice: 80,
+      status: "requested",
+      customerId: "customer-2",
+      providerId: null,
+      createdAt: new Date("2025-10-05T09:00:00Z"),
+    };
+    this.jobs.set(job2.id, job2);
+
+    const job3: Job = {
+      id: "job-3",
+      serviceType: "Engine Repair",
+      title: "Check engine light diagnostics",
+      description: "Check engine light came on. Need diagnostic scan and repair estimate.",
+      location: "Berkeley, CA 94704",
+      preferredDate: "2025-10-17",
+      preferredTime: "09:00",
+      estimatedPrice: 120,
+      status: "requested",
+      customerId: "customer-3",
+      providerId: null,
+      createdAt: new Date("2025-10-05T08:00:00Z"),
+    };
+    this.jobs.set(job3.id, job3);
   }
 
   async getUser(id: string): Promise<User | undefined> {

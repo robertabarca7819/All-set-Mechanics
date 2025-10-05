@@ -13,7 +13,7 @@ interface JobCardProps {
   location: string;
   preferredDate: string;
   preferredTime: string;
-  estimatedPrice?: number;
+  estimatedPrice?: number | null;
   status: JobStatus;
   onAccept?: () => void;
   onViewDetails?: () => void;

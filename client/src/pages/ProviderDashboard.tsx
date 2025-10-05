@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { StatsCard } from "@/components/StatsCard";
@@ -9,6 +11,7 @@ import { Briefcase, Clock, DollarSign, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import type { Job } from "@shared/schema";
 
 export default function ProviderDashboard() {
   const { toast } = useToast();
@@ -16,12 +19,35 @@ export default function ProviderDashboard() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
 
+  const { data: jobs = [], isLoading } = useQuery<Job[]>({
+    queryKey: ["/api/jobs"],
+  });
+
+  const acceptJobMutation = useMutation({
+    mutationFn: async (jobId: string) => {
+      return apiRequest("PATCH", `/api/jobs/${jobId}`, { 
+        status: "accepted",
+        providerId: "demo-user-1"
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      toast({
+        title: "Job Accepted!",
+        description: "Customer will be notified to proceed with payment.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to accept job. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleAcceptJob = (jobId: string) => {
-    console.log("Accepting job:", jobId);
-    toast({
-      title: "Job Accepted!",
-      description: "Customer will be notified to proceed with payment.",
-    });
+    acceptJobMutation.mutate(jobId);
   };
 
   const handleInitiatePayment = (job: any) => {
@@ -33,41 +59,10 @@ export default function ProviderDashboard() {
     setLocation("/messages");
   };
 
-  const mockJobs = [
-    {
-      id: "1",
-      serviceType: "Brake Service",
-      title: "Front brake pads replacement",
-      description: "Squeaking noise when braking. Need front brake pads replaced on 2018 Honda Civic.",
-      location: "San Francisco, CA 94105",
-      preferredDate: "2025-10-15",
-      preferredTime: "14:00",
-      estimatedPrice: 250,
-      status: "requested" as const,
-    },
-    {
-      id: "2",
-      serviceType: "Oil Change",
-      title: "Synthetic oil change",
-      description: "Regular maintenance oil change for 2020 Toyota Camry, synthetic oil preferred.",
-      location: "Oakland, CA 94612",
-      preferredDate: "2025-10-16",
-      preferredTime: "10:00",
-      estimatedPrice: 80,
-      status: "requested" as const,
-    },
-    {
-      id: "3",
-      serviceType: "Engine Repair",
-      title: "Check engine light diagnostics",
-      description: "Check engine light came on. Need diagnostic scan and repair estimate.",
-      location: "Berkeley, CA 94704",
-      preferredDate: "2025-10-17",
-      preferredTime: "09:00",
-      estimatedPrice: 120,
-      status: "accepted" as const,
-    },
-  ];
+  const currentProviderId = "demo-user-1";
+  const providerJobs = jobs.filter(job => 
+    job.providerId === currentProviderId || job.providerId === null
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -85,13 +80,13 @@ export default function ProviderDashboard() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatsCard
                 title="Active Jobs"
-                value={12}
+                value={providerJobs.filter(j => j.status !== "completed").length}
                 icon={Briefcase}
                 trend="+3 from last week"
               />
               <StatsCard
                 title="Pending Requests"
-                value={8}
+                value={providerJobs.filter(j => j.status === "requested").length}
                 icon={Clock}
                 trend="2 new today"
               />
@@ -103,7 +98,7 @@ export default function ProviderDashboard() {
               />
               <StatsCard
                 title="Completed Jobs"
-                value={45}
+                value={providerJobs.filter(j => j.status === "completed").length}
                 icon={CheckCircle2}
                 trend="95% satisfaction"
               />
@@ -123,49 +118,98 @@ export default function ProviderDashboard() {
               </TabsList>
 
               <TabsContent value="new-requests" className="mt-6">
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {mockJobs
-                    .filter((job) => job.status === "requested")
-                    .map((job) => (
-                      <JobCard
-                        key={job.id}
-                        {...job}
-                        onAccept={() => handleAcceptJob(job.id)}
-                        onViewDetails={() => console.log("View details:", job.id)}
-                        onMessage={handleMessage}
-                      />
-                    ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="active" className="mt-6">
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {mockJobs
-                    .filter((job) => job.status === "accepted")
-                    .map((job) => (
-                      <div key={job.id} className="space-y-4">
+                {isLoading ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <p>Loading jobs...</p>
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {providerJobs
+                      .filter((job) => job.status === "requested")
+                      .map((job) => (
                         <JobCard
+                          key={job.id}
                           {...job}
+                          status={job.status as any}
+                          onAccept={() => handleAcceptJob(job.id)}
                           onViewDetails={() => console.log("View details:", job.id)}
                           onMessage={handleMessage}
                         />
-                        <Button
-                          className="w-full"
-                          onClick={() => handleInitiatePayment(job)}
-                          data-testid={`button-initiate-payment-${job.id}`}
-                        >
-                          Initiate Prepayment Contract
-                        </Button>
+                      ))}
+                    {providerJobs.filter((job) => job.status === "requested").length === 0 && (
+                      <div className="col-span-full text-center py-12 text-muted-foreground">
+                        <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No pending requests</p>
                       </div>
-                    ))}
-                </div>
+                    )}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="active" className="mt-6">
+                {isLoading ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <p>Loading jobs...</p>
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {providerJobs
+                      .filter((job) => job.status === "accepted" || job.status === "payment_pending" || job.status === "confirmed")
+                      .map((job) => (
+                        <div key={job.id} className="space-y-4">
+                          <JobCard
+                            {...job}
+                            status={job.status as any}
+                            onViewDetails={() => console.log("View details:", job.id)}
+                            onMessage={handleMessage}
+                          />
+                          {job.status === "accepted" && (
+                            <Button
+                              className="w-full"
+                              onClick={() => handleInitiatePayment(job)}
+                              data-testid={`button-initiate-payment-${job.id}`}
+                            >
+                              Initiate Prepayment Contract
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    {providerJobs.filter((job) => job.status === "accepted" || job.status === "payment_pending" || job.status === "confirmed").length === 0 && (
+                      <div className="col-span-full text-center py-12 text-muted-foreground">
+                        <Briefcase className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No active jobs</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="completed" className="mt-6">
-                <div className="text-center py-12 text-muted-foreground">
-                  <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No completed jobs to display</p>
-                </div>
+                {isLoading ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <p>Loading jobs...</p>
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {providerJobs
+                      .filter((job) => job.status === "completed")
+                      .map((job) => (
+                        <JobCard
+                          key={job.id}
+                          {...job}
+                          status={job.status as any}
+                          onViewDetails={() => console.log("View details:", job.id)}
+                          onMessage={handleMessage}
+                        />
+                      ))}
+                    {providerJobs.filter((job) => job.status === "completed").length === 0 && (
+                      <div className="col-span-full text-center py-12 text-muted-foreground">
+                        <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No completed jobs to display</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
