@@ -221,11 +221,16 @@ export default function ProviderDashboard() {
         <PaymentModal
           open={paymentModalOpen}
           onOpenChange={setPaymentModalOpen}
+          jobId={selectedJob.id}
           jobTitle={selectedJob.title}
           serviceType={selectedJob.serviceType}
-          subtotal={selectedJob.estimatedPrice}
-          tax={selectedJob.estimatedPrice * 0.09}
-          total={selectedJob.estimatedPrice * 1.09}
+          subtotal={selectedJob.estimatedPrice || 0}
+          tax={(selectedJob.estimatedPrice || 0) * 0.09}
+          total={(selectedJob.estimatedPrice || 0) * 1.09}
+          onPaymentSuccess={async (jobId) => {
+            await apiRequest("PATCH", `/api/jobs/${jobId}`, { status: "confirmed" });
+            queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+          }}
         />
       )}
     </div>

@@ -2,10 +2,12 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { z } from "zod";
+import Stripe from "stripe";
 import { storage } from "./storage";
 import { insertConversationSchema, insertMessageSchema } from "@shared/schema";
 
 const wsClients = new Map<string, WebSocket>();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/conversations", async (req, res) => {
@@ -130,6 +132,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid update data", details: error.errors });
       }
       res.status(500).json({ error: "Failed to update job" });
+    }
+  });
+
+  app.post("/api/create-payment-intent", async (req, res) => {
+    try {
+      const schema = z.object({
+        jobId: z.string(),
+      });
+      const { jobId } = schema.parse(req.body);
+
+      const job = await storage.getJob(jobId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      if (!job.estimatedPrice) {
+        return res.status(400).json({ error: "Job does not have an estimated price" });
+      }
+
+      const subtotal = job.estimatedPrice;
+      const tax = subtotal * 0.09;
+      const total = subtotal + tax;
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(total * 100), // Convert to cents
+        currency: "usd",
+        metadata: {
+          jobId,
+          jobTitle: job.title,
+          serviceType: job.serviceType,
+        },
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+
+      res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      console.error("Payment intent creation error:", error);
+      res.status(500).json({ error: "Failed to create payment intent" });
     }
   });
 
