@@ -240,7 +240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const updateSchema = z.object({
-        status: z.enum(["requested", "accepted", "payment_pending", "confirmed", "completed"]).optional(),
+        status: z.enum(["requested", "accepted", "deposit_due", "payment_pending", "confirmed", "completed"]).optional(),
         providerId: z.string().optional(),
         estimatedPrice: z.number().optional(),
         contractTerms: z.string().optional(),
@@ -250,6 +250,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentStatus: z.string().optional(),
         checkoutSessionId: z.string().optional(),
         paymentLinkToken: z.string().optional(),
+        customerEmail: z.string().email().optional(),
+        isUrgent: z.enum(["true", "false"]).optional(),
+        responseDeadline: z.string().optional(),
+        appointmentDateTime: z.string().optional(),
       });
       const updates = updateSchema.parse(req.body);
       const updatedJob = await storage.updateJob(id, updates);

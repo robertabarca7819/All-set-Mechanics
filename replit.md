@@ -43,6 +43,16 @@ Preferred communication style: Simple, everyday language.
 - POST /api/messages - Send message
 - WebSocket endpoint at /ws for real-time messaging
 
+**Scheduling & Payment APIs**:
+- POST /api/deposits/:jobId - Create deposit checkout session (admin only)
+- POST /api/checkout-sessions - Create final payment checkout (admin only)
+- POST /api/customer/request-access - Request email verification code
+- POST /api/customer/verify-access - Verify code and issue access token
+- GET /api/customer/jobs?token={token} - Get customer jobs by token
+- POST /api/customer/reschedule - Reschedule appointment (24hr policy)
+- POST /api/customer/cancel - Cancel appointment (24hr policy)
+- POST /api/stripe/webhook - Handle Stripe payment events
+
 **Data Storage Strategy**: The application currently uses an in-memory storage implementation (`MemStorage` class) with interfaces designed for easy migration to a persistent database. The storage layer abstracts data operations through the `IStorage` interface, making it database-agnostic.
 
 **Session Management**: Configured to use connect-pg-simple for PostgreSQL-based session storage (preparation for production deployment)
@@ -74,8 +84,19 @@ Preferred communication style: Simple, everyday language.
 - serviceType, title, description (service details)
 - location, preferredDate, preferredTime (scheduling)
 - estimatedPrice (integer)
-- status (text: requested/accepted/payment_pending/confirmed/completed)
+- status (text: requested/accepted/deposit_due/payment_pending/confirmed/completed)
 - customerId, providerId (user references)
+- createdAt (timestamp)
+- **Scheduling fields**: customerEmail, isUrgent, responseDeadline, appointmentDateTime, previousAppointmentDateTime, rescheduleCount, rescheduledAt, cancelledAt
+- **Deposit fields**: depositAmount (default 100), depositStatus, depositCheckoutSessionId, depositPaidAt
+- **Customer access**: customerAccessToken (for self-service portal)
+- **Cancellation**: cancellationFee, cancellationFeeStatus
+
+**Customer Verification Codes Table**:
+- id (UUID primary key)
+- email (text)
+- code (text) - 6-digit verification code
+- expiresAt (timestamp) - 15-minute expiry
 - createdAt (timestamp)
 
 **Conversations Table**:
@@ -92,6 +113,54 @@ Preferred communication style: Simple, everyday language.
 **Validation**: Zod schemas (insertUserSchema, insertJobSchema, etc.) provide runtime type validation and integrate with Drizzle for type-safe database operations.
 
 **Migration Strategy**: Drizzle Kit configured to generate migrations in `/migrations` directory from schema definitions.
+
+### Advanced Scheduling & Payment Features
+
+**Deposit System**:
+- $100 deposit required when provider accepts job
+- Deposit checkout automatically created by admin
+- Deposit amount deducted from final payment (estimatedPrice - depositAmount)
+- Stripe webhook handles deposit payment confirmation
+- Metadata distinguishes deposit vs final payment (metadata.type)
+
+**Customer Self-Service Portal**:
+- Email-based access with 2-step verification
+- Step 1: Request 6-digit verification code (15-minute expiry)
+- Step 2: Verify code to receive access token
+- Access token stored in localStorage for persistence
+- View jobs, reschedule, and cancel appointments
+
+**Reschedule & Cancellation Policy**:
+- **24-hour free window**: Free rescheduling/cancellation if ≥24 hours before appointment
+- **Late fee**: $50 fee if rescheduling/canceling <24 hours before appointment
+- Fee charged via Stripe checkout before reschedule/cancellation confirmed
+- Tracks reschedule count and previous appointment times
+
+**Urgent Request System**:
+- Customers can flag requests as urgent
+- 3-hour response deadline for urgent requests
+- Visual highlighting in admin dashboard
+- Response deadline tracked and displayed
+
+**Calendar Integration**:
+- Admin calendar view at /admin/calendar
+- React-day-picker for monthly appointment display
+- Color-coded appointments by status
+- Click to view job details
+
+**Job Filtering**:
+- Filter by status (requested, accepted, confirmed, etc.)
+- Filter by service type
+- Filter by date range
+- Filter by urgent flag
+- Applied in both admin dashboard and customer portal
+
+**Security Features**:
+- Admin session expiry enforcement (checks expiresAt field)
+- Email verification required for customer access
+- Verification codes expire in 15 minutes
+- One-time use codes (deleted after verification)
+- Customer access tokens scoped to email-specific jobs only
 
 ### Real-time Communication
 

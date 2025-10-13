@@ -27,7 +27,7 @@ export const jobs = pgTable("jobs", {
   preferredTime: text("preferred_time").notNull(),
   estimatedPrice: integer("estimated_price"),
   status: text("status").notNull().default("requested"),
-  customerId: varchar("customer_id").notNull(),
+  customerId: varchar("customer_id"),
   providerId: varchar("provider_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   contractTerms: text("contract_terms"),
@@ -41,7 +41,7 @@ export const jobs = pgTable("jobs", {
   // Scheduling enhancements
   isUrgent: text("is_urgent").default("false"),
   responseDeadline: timestamp("response_deadline"),
-  customerEmail: text("customer_email"),
+  customerEmail: text("customer_email").notNull(),
   customerAccessToken: text("customer_access_token"),
   
   // Deposit management
@@ -65,6 +65,13 @@ export const jobs = pgTable("jobs", {
 export const insertJobSchema = createInsertSchema(jobs).omit({
   id: true,
   createdAt: true,
+}).extend({
+  appointmentDateTime: z.union([z.date(), z.string()]).optional().transform(val => 
+    val ? (typeof val === 'string' ? new Date(val) : val) : undefined
+  ),
+  responseDeadline: z.union([z.date(), z.string(), z.null()]).optional().transform(val => 
+    val ? (typeof val === 'string' ? new Date(val) : val) : null
+  ),
 });
 
 export type InsertJob = z.infer<typeof insertJobSchema>;

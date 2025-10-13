@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertCircle } from "lucide-react";
 
 const serviceTypes = [
   "Oil Change",
@@ -40,13 +42,15 @@ export default function RequestPage() {
     location: "",
     preferredDate: "",
     preferredTime: "",
+    customerEmail: "",
+    isUrgent: false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.serviceType || !formData.title || !formData.description || 
-        !formData.location || !formData.preferredDate || !formData.preferredTime) {
+        !formData.location || !formData.preferredDate || !formData.preferredTime || !formData.customerEmail) {
       toast({
         title: "Missing Fields",
         description: "Please fill out all required fields",
@@ -58,9 +62,16 @@ export default function RequestPage() {
     setIsSubmitting(true);
     
     try {
+      const appointmentDateTime = new Date(`${formData.preferredDate}T${formData.preferredTime}:00Z`);
+      const responseDeadline = formData.isUrgent 
+        ? new Date(Date.now() + 3 * 60 * 60 * 1000)
+        : null;
+
       await apiRequest("POST", "/api/jobs", {
         ...formData,
-        customerId: "customer-demo",
+        isUrgent: formData.isUrgent ? "true" : "false",
+        responseDeadline,
+        appointmentDateTime,
       });
       
       toast({
@@ -188,6 +199,43 @@ export default function RequestPage() {
                       data-testid="input-preferred-time"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="customer-email">Your Email Address *</Label>
+                  <Input
+                    id="customer-email"
+                    type="email"
+                    placeholder="your.email@example.com"
+                    value={formData.customerEmail}
+                    onChange={(e) =>
+                      setFormData({ ...formData, customerEmail: e.target.value })
+                    }
+                    data-testid="input-customer-email"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    We'll send updates about your service request to this email
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="is-urgent"
+                    checked={formData.isUrgent}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, isUrgent: checked as boolean })
+                    }
+                    data-testid="checkbox-is-urgent"
+                  />
+                  <Label htmlFor="is-urgent" className="flex items-center gap-2">
+                    Mark as Urgent
+                    {formData.isUrgent && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        3-hour response required
+                      </span>
+                    )}
+                  </Label>
                 </div>
 
                 <Button 
