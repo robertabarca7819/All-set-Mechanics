@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/Home";
 import RequestPage from "@/pages/RequestPage";
 import AdminPage from "@/pages/AdminPage";
+import AdminCalendar from "@/pages/AdminCalendar";
+import CustomerDashboard from "@/pages/CustomerDashboard";
 import ContractPage from "@/pages/ContractPage";
 import ProviderDashboard from "@/pages/ProviderDashboard";
 import Messages from "@/pages/Messages";
@@ -17,6 +19,8 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/request" component={RequestPage} />
       <Route path="/admin" component={AdminPage} />
+      <Route path="/admin/calendar" component={AdminCalendar} />
+      <Route path="/my-jobs" component={CustomerDashboard} />
       <Route path="/contract/:jobId" component={ContractPage} />
       <Route path="/provider-dashboard" component={ProviderDashboard} />
       <Route path="/messages" component={Messages} />

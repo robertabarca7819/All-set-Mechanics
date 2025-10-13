@@ -9,7 +9,15 @@ export interface IStorage {
   createJob(job: InsertJob): Promise<Job>;
   getJob(id: string): Promise<Job | undefined>;
   getJobByPaymentLinkToken(token: string): Promise<Job | undefined>;
+  getJobByCustomerAccessToken(token: string): Promise<Job | undefined>;
   getAllJobs(): Promise<Job[]>;
+  getJobsByCustomerEmail(email: string): Promise<Job[]>;
+  getJobsFiltered(filters: {
+    status?: string;
+    serviceType?: string;
+    dateRange?: { start: string; end: string };
+    isUrgent?: boolean;
+  }): Promise<Job[]>;
   updateJob(id: string, updates: Partial<Job>): Promise<Job | undefined>;
   
   createConversation(conversation: InsertConversation): Promise<Conversation>;
@@ -65,6 +73,21 @@ export class MemStorage implements IStorage {
       paymentStatus: "pending",
       checkoutSessionId: null,
       paymentLinkToken: null,
+      isUrgent: "false",
+      responseDeadline: null,
+      customerEmail: "customer1@example.com",
+      customerAccessToken: null,
+      depositAmount: 100,
+      depositStatus: "pending",
+      depositCheckoutSessionId: null,
+      depositPaidAt: null,
+      appointmentDateTime: new Date("2025-10-15T14:00:00Z"),
+      previousAppointmentDateTime: null,
+      rescheduleCount: 0,
+      rescheduledAt: null,
+      cancellationFee: 0,
+      cancellationFeeStatus: "none",
+      cancelledAt: null,
     };
     this.jobs.set(job1.id, job1);
 
@@ -135,6 +158,21 @@ export class MemStorage implements IStorage {
       paymentStatus: "pending",
       checkoutSessionId: null,
       paymentLinkToken: null,
+      isUrgent: "true",
+      responseDeadline: new Date("2025-10-05T12:00:00Z"),
+      customerEmail: "customer2@example.com",
+      customerAccessToken: null,
+      depositAmount: 100,
+      depositStatus: "pending",
+      depositCheckoutSessionId: null,
+      depositPaidAt: null,
+      appointmentDateTime: new Date("2025-10-16T10:00:00Z"),
+      previousAppointmentDateTime: null,
+      rescheduleCount: 0,
+      rescheduledAt: null,
+      cancellationFee: 0,
+      cancellationFeeStatus: "none",
+      cancelledAt: null,
     };
     this.jobs.set(job2.id, job2);
 
@@ -158,6 +196,21 @@ export class MemStorage implements IStorage {
       paymentStatus: "pending",
       checkoutSessionId: null,
       paymentLinkToken: null,
+      isUrgent: "false",
+      responseDeadline: null,
+      customerEmail: "customer3@example.com",
+      customerAccessToken: null,
+      depositAmount: 100,
+      depositStatus: "pending",
+      depositCheckoutSessionId: null,
+      depositPaidAt: null,
+      appointmentDateTime: new Date("2025-10-17T09:00:00Z"),
+      previousAppointmentDateTime: null,
+      rescheduleCount: 0,
+      rescheduledAt: null,
+      cancellationFee: 0,
+      cancellationFeeStatus: "none",
+      cancelledAt: null,
     };
     this.jobs.set(job3.id, job3);
   }
@@ -190,9 +243,24 @@ export class MemStorage implements IStorage {
       customerSignature: null,
       providerSignature: null,
       signedAt: null,
-      paymentStatus: "pending",
+      paymentStatus: insertJob.paymentStatus || "pending",
       checkoutSessionId: null,
       paymentLinkToken: null,
+      isUrgent: insertJob.isUrgent || "false",
+      responseDeadline: insertJob.responseDeadline || null,
+      customerEmail: insertJob.customerEmail || null,
+      customerAccessToken: insertJob.customerAccessToken || null,
+      depositAmount: insertJob.depositAmount || 100,
+      depositStatus: insertJob.depositStatus || "pending",
+      depositCheckoutSessionId: null,
+      depositPaidAt: null,
+      appointmentDateTime: insertJob.appointmentDateTime || null,
+      previousAppointmentDateTime: null,
+      rescheduleCount: 0,
+      rescheduledAt: null,
+      cancellationFee: 0,
+      cancellationFeeStatus: "none",
+      cancelledAt: null,
       id,
       createdAt: new Date()
     };
@@ -269,6 +337,52 @@ export class MemStorage implements IStorage {
     return Array.from(this.jobs.values()).find(
       (job) => job.paymentLinkToken === token
     );
+  }
+
+  async getJobByCustomerAccessToken(token: string): Promise<Job | undefined> {
+    return Array.from(this.jobs.values()).find(
+      (job) => job.customerAccessToken === token
+    );
+  }
+
+  async getJobsByCustomerEmail(email: string): Promise<Job[]> {
+    return Array.from(this.jobs.values()).filter(
+      (job) => job.customerEmail === email
+    );
+  }
+
+  async getJobsFiltered(filters: {
+    status?: string;
+    serviceType?: string;
+    dateRange?: { start: string; end: string };
+    isUrgent?: boolean;
+  }): Promise<Job[]> {
+    let jobs = Array.from(this.jobs.values());
+
+    if (filters.status) {
+      jobs = jobs.filter((job) => job.status === filters.status);
+    }
+
+    if (filters.serviceType) {
+      jobs = jobs.filter((job) => job.serviceType === filters.serviceType);
+    }
+
+    if (filters.isUrgent !== undefined) {
+      const isUrgentStr = filters.isUrgent ? "true" : "false";
+      jobs = jobs.filter((job) => job.isUrgent === isUrgentStr);
+    }
+
+    if (filters.dateRange) {
+      const startDate = new Date(filters.dateRange.start);
+      const endDate = new Date(filters.dateRange.end);
+      jobs = jobs.filter((job) => {
+        if (!job.appointmentDateTime) return false;
+        const appointmentDate = new Date(job.appointmentDateTime);
+        return appointmentDate >= startDate && appointmentDate <= endDate;
+      });
+    }
+
+    return jobs;
   }
 
   async createAdminSession(insertSession: InsertAdminSession): Promise<AdminSession> {

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -12,6 +13,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { AlertCircle } from "lucide-react";
 
 const serviceTypes = [
   "Oil Change",
@@ -34,15 +38,60 @@ export function JobRequestForm() {
     location: "",
     preferredDate: "",
     preferredTime: "",
+    customerEmail: "",
+    isUrgent: false,
+  });
+  const [accessToken, setAccessToken] = useState<string>("");
+
+  const createJobMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/jobs", data);
+      return res.json();
+    },
+    onSuccess: async (data) => {
+      const requestRes = await apiRequest("POST", "/api/customer/request-access", {
+        email: formData.customerEmail,
+      });
+      const requestData = await requestRes.json();
+      setAccessToken(requestData.accessToken);
+      
+      toast({
+        title: "Request Submitted!",
+        description: "Save your access token to track your job.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to submit job request",
+        variant: "destructive",
+      });
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Job request submitted:", formData);
-    toast({
-      title: "Request Submitted!",
-      description: "We'll notify you when a provider accepts your job.",
-    });
+    
+    const appointmentDateTime = new Date(`${formData.preferredDate}T${formData.preferredTime}:00Z`);
+    const responseDeadline = formData.isUrgent 
+      ? new Date(Date.now() + 3 * 60 * 60 * 1000)
+      : null;
+
+    const jobData = {
+      serviceType: formData.serviceType,
+      title: formData.title,
+      description: formData.description,
+      location: formData.location,
+      preferredDate: formData.preferredDate,
+      preferredTime: formData.preferredTime,
+      customerEmail: formData.customerEmail,
+      isUrgent: formData.isUrgent ? "true" : "false",
+      responseDeadline,
+      appointmentDateTime,
+      customerId: "customer-" + Date.now(),
+    };
+
+    createJobMutation.mutate(jobData);
   };
 
   return (
@@ -116,6 +165,21 @@ export function JobRequestForm() {
             />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="customer-email">Email Address</Label>
+            <Input
+              id="customer-email"
+              type="email"
+              placeholder="your@email.com"
+              value={formData.customerEmail}
+              onChange={(e) =>
+                setFormData({ ...formData, customerEmail: e.target.value })
+              }
+              required
+              data-testid="input-customer-email"
+            />
+          </div>
+
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="preferred-date">Preferred Date</Label>
@@ -144,8 +208,58 @@ export function JobRequestForm() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full" size="lg" data-testid="button-submit-request">
-            Submit Request
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="is-urgent"
+              checked={formData.isUrgent}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, isUrgent: checked as boolean })
+              }
+              data-testid="checkbox-is-urgent"
+            />
+            <Label htmlFor="is-urgent" className="flex items-center gap-2">
+              Mark as Urgent
+              {formData.isUrgent && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  3-hour response required
+                </span>
+              )}
+            </Label>
+          </div>
+
+          {accessToken && (
+            <div className="p-4 bg-muted rounded-md space-y-2" data-testid="div-access-token">
+              <Label className="text-sm font-semibold">Your Access Token</Label>
+              <p className="text-xs text-muted-foreground">
+                Save this token to track and manage your job. You'll need it to access the customer dashboard.
+              </p>
+              <div className="flex items-center gap-2">
+                <Input value={accessToken} readOnly className="font-mono text-xs" data-testid="input-access-token" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(accessToken);
+                    toast({ title: "Copied!", description: "Access token copied to clipboard" });
+                  }}
+                  data-testid="button-copy-token"
+                >
+                  Copy
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <Button 
+            type="submit" 
+            className="w-full" 
+            size="lg" 
+            disabled={createJobMutation.isPending}
+            data-testid="button-submit-request"
+          >
+            {createJobMutation.isPending ? "Submitting..." : "Submit Request"}
           </Button>
         </form>
       </CardContent>

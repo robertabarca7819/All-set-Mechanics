@@ -37,6 +37,29 @@ export const jobs = pgTable("jobs", {
   paymentStatus: text("payment_status").default("pending"),
   checkoutSessionId: text("checkout_session_id"),
   paymentLinkToken: text("payment_link_token"),
+  
+  // Scheduling enhancements
+  isUrgent: text("is_urgent").default("false"),
+  responseDeadline: timestamp("response_deadline"),
+  customerEmail: text("customer_email"),
+  customerAccessToken: text("customer_access_token"),
+  
+  // Deposit management
+  depositAmount: integer("deposit_amount").default(100),
+  depositStatus: text("deposit_status").default("pending"),
+  depositCheckoutSessionId: text("deposit_checkout_session_id"),
+  depositPaidAt: timestamp("deposit_paid_at"),
+  
+  // Appointment tracking
+  appointmentDateTime: timestamp("appointment_date_time"),
+  previousAppointmentDateTime: timestamp("previous_appointment_date_time"),
+  rescheduleCount: integer("reschedule_count").default(0),
+  rescheduledAt: timestamp("rescheduled_at"),
+  
+  // Cancellation management
+  cancellationFee: integer("cancellation_fee").default(0),
+  cancellationFeeStatus: text("cancellation_fee_status").default("none"),
+  cancelledAt: timestamp("cancelled_at"),
 });
 
 export const insertJobSchema = createInsertSchema(jobs).omit({

@@ -265,6 +265,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/deposits/:jobId", adminAuthMiddleware, async (req, res) => {
+    try {
+      const { jobId } = req.params;
+
+      const job = await storage.getJob(jobId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      const depositAmount = job.depositAmount || 100;
+      const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: `Deposit - ${job.title}`,
+                description: `$${depositAmount} deposit for ${job.serviceType}`,
+              },
+              unit_amount: depositAmount * 100,
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: `${baseUrl}/admin`,
+        cancel_url: `${baseUrl}/admin`,
+        metadata: {
+          jobId,
+          type: "deposit",
+        },
+      });
+
+      const depositLinkToken = randomBytes(32).toString("hex");
+      await storage.updateJob(jobId, { 
+        depositCheckoutSessionId: session.id,
+        status: "deposit_due",
+      });
+
+      res.json({ 
+        sessionId: session.id,
+        depositLinkToken,
+        checkoutUrl: session.url,
+      });
+    } catch (error) {
+      console.error("Deposit checkout session creation error:", error);
+      res.status(500).json({ error: "Failed to create deposit checkout session" });
+    }
+  });
+
   app.post("/api/checkout-sessions", adminAuthMiddleware, async (req, res) => {
     try {
       const schema = z.object({
@@ -281,8 +334,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Job does not have an estimated price" });
       }
 
-      const subtotal = job.estimatedPrice;
-      const tax = Math.round(subtotal * 0.09);
+      let subtotal = job.estimatedPrice;
+      
+      if (job.depositStatus === "paid" && job.depositAmount) {
+        subtotal = subtotal - job.depositAmount;
+      }
+
+      const tax = Math.round(job.estimatedPrice * 0.09);
       const total = subtotal + tax;
 
       const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
@@ -307,6 +365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cancel_url: `${baseUrl}/admin`,
         metadata: {
           jobId,
+          type: "final",
         },
       });
 
@@ -326,6 +385,222 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Checkout session creation error:", error);
       res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  app.post("/api/customer/reschedule", async (req, res) => {
+    try {
+      const schema = z.object({
+        jobId: z.string(),
+        newDate: z.string(),
+        newTime: z.string(),
+        accessToken: z.string(),
+      });
+      const { jobId, newDate, newTime, accessToken } = schema.parse(req.body);
+
+      const job = await storage.getJob(jobId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      if (job.customerAccessToken !== accessToken) {
+        return res.status(401).json({ error: "Invalid access token" });
+      }
+
+      if (!job.appointmentDateTime) {
+        return res.status(400).json({ error: "No appointment scheduled" });
+      }
+
+      const now = new Date();
+      const appointmentDate = new Date(job.appointmentDateTime);
+      const hoursUntilAppointment = (appointmentDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      if (hoursUntilAppointment >= 24) {
+        const newAppointmentDateTime = new Date(`${newDate}T${newTime}:00Z`);
+        await storage.updateJob(jobId, {
+          previousAppointmentDateTime: job.appointmentDateTime,
+          appointmentDateTime: newAppointmentDateTime,
+          rescheduleCount: (job.rescheduleCount || 0) + 1,
+          rescheduledAt: new Date(),
+        });
+
+        res.json({ 
+          success: true, 
+          message: "Appointment rescheduled successfully",
+          newAppointmentDateTime: newAppointmentDateTime.toISOString(),
+        });
+      } else {
+        const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ["card"],
+          line_items: [
+            {
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: `Reschedule Fee - ${job.title}`,
+                  description: "Late reschedule fee (less than 24 hours notice)",
+                },
+                unit_amount: 5000,
+              },
+              quantity: 1,
+            },
+          ],
+          mode: "payment",
+          success_url: `${baseUrl}/my-jobs`,
+          cancel_url: `${baseUrl}/my-jobs`,
+          metadata: {
+            jobId,
+            type: "reschedule_fee",
+            newDate,
+            newTime,
+          },
+        });
+
+        res.json({ 
+          requiresPayment: true,
+          checkoutUrl: session.url,
+          message: "Reschedule within 24 hours requires a $50 fee",
+        });
+      }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      console.error("Reschedule error:", error);
+      res.status(500).json({ error: "Failed to reschedule appointment" });
+    }
+  });
+
+  app.post("/api/customer/request-access", async (req, res) => {
+    try {
+      const schema = z.object({
+        email: z.string().email(),
+      });
+      const { email } = schema.parse(req.body);
+
+      const jobs = await storage.getJobsByCustomerEmail(email);
+      if (jobs.length === 0) {
+        return res.status(404).json({ error: "No jobs found for this email" });
+      }
+
+      const accessToken = randomBytes(32).toString("hex");
+      
+      for (const job of jobs) {
+        if (!job.customerAccessToken) {
+          await storage.updateJob(job.id, { customerAccessToken: accessToken });
+        }
+      }
+
+      res.json({ 
+        accessToken,
+        message: "Access token generated successfully",
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      console.error("Request access error:", error);
+      res.status(500).json({ error: "Failed to generate access token" });
+    }
+  });
+
+  app.get("/api/customer/jobs", async (req, res) => {
+    try {
+      const accessToken = req.query.token as string;
+      
+      if (!accessToken) {
+        return res.status(400).json({ error: "Access token is required" });
+      }
+
+      const job = await storage.getJobByCustomerAccessToken(accessToken);
+      
+      if (!job) {
+        return res.status(404).json({ error: "No jobs found for this access token" });
+      }
+
+      const jobs = await storage.getJobsByCustomerEmail(job.customerEmail!);
+      
+      res.json(jobs);
+    } catch (error) {
+      console.error("Get customer jobs error:", error);
+      res.status(500).json({ error: "Failed to fetch jobs" });
+    }
+  });
+
+  app.post("/api/customer/cancel", async (req, res) => {
+    try {
+      const schema = z.object({
+        jobId: z.string(),
+        accessToken: z.string(),
+      });
+      const { jobId, accessToken } = schema.parse(req.body);
+
+      const job = await storage.getJob(jobId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      if (job.customerAccessToken !== accessToken) {
+        return res.status(401).json({ error: "Invalid access token" });
+      }
+
+      if (!job.appointmentDateTime) {
+        return res.status(400).json({ error: "No appointment scheduled" });
+      }
+
+      const now = new Date();
+      const appointmentDate = new Date(job.appointmentDateTime);
+      const hoursUntilAppointment = (appointmentDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      if (hoursUntilAppointment >= 24) {
+        await storage.updateJob(jobId, {
+          status: "cancelled",
+          cancelledAt: new Date(),
+        });
+
+        res.json({ 
+          success: true, 
+          message: "Appointment cancelled successfully",
+        });
+      } else {
+        const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ["card"],
+          line_items: [
+            {
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: `Cancellation Fee - ${job.title}`,
+                  description: "Late cancellation fee (less than 24 hours notice)",
+                },
+                unit_amount: 5000,
+              },
+              quantity: 1,
+            },
+          ],
+          mode: "payment",
+          success_url: `${baseUrl}/my-jobs`,
+          cancel_url: `${baseUrl}/my-jobs`,
+          metadata: {
+            jobId,
+            type: "cancellation_fee",
+          },
+        });
+
+        res.json({ 
+          requiresPayment: true,
+          checkoutUrl: session.url,
+          message: "Cancellation within 24 hours requires a $50 fee",
+        });
+      }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      console.error("Cancellation error:", error);
+      res.status(500).json({ error: "Failed to cancel appointment" });
     }
   });
 
@@ -374,12 +649,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const jobId = session.metadata?.jobId;
+      const paymentType = session.metadata?.type;
 
       if (jobId) {
-        await storage.updateJob(jobId, {
-          paymentStatus: "paid",
-          checkoutSessionId: session.id,
-        });
+        if (paymentType === "deposit") {
+          await storage.updateJob(jobId, {
+            depositStatus: "paid",
+            depositPaidAt: new Date(),
+            status: "confirmed",
+          });
+        } else if (paymentType === "reschedule_fee") {
+          const newDate = session.metadata?.newDate;
+          const newTime = session.metadata?.newTime;
+          const job = await storage.getJob(jobId);
+          
+          if (job && newDate && newTime) {
+            const newAppointmentDateTime = new Date(`${newDate}T${newTime}:00Z`);
+            await storage.updateJob(jobId, {
+              previousAppointmentDateTime: job.appointmentDateTime,
+              appointmentDateTime: newAppointmentDateTime,
+              rescheduleCount: (job.rescheduleCount || 0) + 1,
+              rescheduledAt: new Date(),
+              cancellationFee: 50,
+              cancellationFeeStatus: "paid",
+            });
+          }
+        } else if (paymentType === "cancellation_fee") {
+          await storage.updateJob(jobId, {
+            status: "cancelled",
+            cancelledAt: new Date(),
+            cancellationFee: 50,
+            cancellationFeeStatus: "paid",
+          });
+        } else {
+          await storage.updateJob(jobId, {
+            paymentStatus: "paid",
+            checkoutSessionId: session.id,
+          });
+        }
       }
     }
 
