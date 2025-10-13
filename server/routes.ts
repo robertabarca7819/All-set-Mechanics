@@ -25,6 +25,13 @@ async function adminAuthMiddleware(req: Request, res: Response, next: NextFuncti
     return res.status(401).json({ error: "Unauthorized" });
   }
   
+  // Check if session has expired
+  if (new Date() > new Date(session.expiresAt)) {
+    await storage.deleteAdminSession(session.id);
+    res.clearCookie("adminToken");
+    return res.status(401).json({ error: "Session expired" });
+  }
+  
   next();
 }
 
@@ -73,7 +80,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const token = req.cookies?.adminToken;
       if (token) {
-        await storage.deleteAdminSession(token);
+        const session = await storage.getAdminSessionByToken(token);
+        if (session) {
+          await storage.deleteAdminSession(session.id);
+        }
       }
       res.clearCookie("adminToken");
       res.json({ success: true });
@@ -93,6 +103,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const session = await storage.getAdminSessionByToken(token);
       
       if (!session) {
+        res.clearCookie("adminToken");
+        return res.json({ authenticated: false });
+      }
+      
+      // Check if session has expired
+      if (new Date() > new Date(session.expiresAt)) {
+        await storage.deleteAdminSession(session.id);
         res.clearCookie("adminToken");
         return res.json({ authenticated: false });
       }
