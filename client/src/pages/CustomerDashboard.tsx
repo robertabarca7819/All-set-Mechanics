@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -16,7 +16,10 @@ export default function CustomerDashboard() {
   const { toast } = useToast();
   const [accessToken, setAccessToken] = useState("");
   const [email, setEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [verificationStep, setVerificationStep] = useState<"email" | "code">("email");
+  const [devCode, setDevCode] = useState("");
   const [rescheduleDialog, setRescheduleDialog] = useState<{ open: boolean; job: Job | null }>({
     open: false,
     job: null,
@@ -24,9 +27,39 @@ export default function CustomerDashboard() {
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
 
-  const requestAccessMutation = useMutation({
+  useEffect(() => {
+    const storedToken = localStorage.getItem("customerAccessToken");
+    if (storedToken) {
+      setAccessToken(storedToken);
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const requestCodeMutation = useMutation({
     mutationFn: async (email: string) => {
       const res = await apiRequest("POST", "/api/customer/request-access", { email });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setVerificationStep("code");
+      setDevCode(data.code);
+      toast({
+        title: "Verification Code Sent",
+        description: `Code: ${data.code} (for dev/testing - in production this would be emailed)`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No jobs found for this email",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const verifyCodeMutation = useMutation({
+    mutationFn: async (data: { email: string; code: string }) => {
+      const res = await apiRequest("POST", "/api/customer/verify-access", data);
       return res.json();
     },
     onSuccess: (data) => {
@@ -35,13 +68,13 @@ export default function CustomerDashboard() {
       localStorage.setItem("customerAccessToken", data.accessToken);
       toast({
         title: "Access Granted",
-        description: "Your access token has been generated",
+        description: "You can now view your jobs",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "No jobs found for this email",
+        description: "Invalid or expired verification code",
         variant: "destructive",
       });
     },
@@ -108,9 +141,14 @@ export default function CustomerDashboard() {
     },
   });
 
-  const handleRequestAccess = (e: React.FormEvent) => {
+  const handleRequestCode = (e: React.FormEvent) => {
     e.preventDefault();
-    requestAccessMutation.mutate(email);
+    requestCodeMutation.mutate(email);
+  };
+
+  const handleVerifyCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    verifyCodeMutation.mutate({ email, code: verificationCode });
   };
 
   const handleTokenLogin = (e: React.FormEvent) => {
@@ -180,31 +218,80 @@ export default function CustomerDashboard() {
             <CardHeader>
               <CardTitle>Customer Dashboard</CardTitle>
               <CardDescription>
-                Access your jobs using your email or access token
+                {verificationStep === "email" 
+                  ? "Enter your email to receive a verification code"
+                  : "Enter the 6-digit code sent to your email"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <form onSubmit={handleRequestAccess} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Request Access with Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    data-testid="input-customer-email"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={requestAccessMutation.isPending}
-                  data-testid="button-request-access"
-                >
-                  {requestAccessMutation.isPending ? "Generating..." : "Get Access Token"}
-                </Button>
-              </form>
+              {verificationStep === "email" ? (
+                <form onSubmit={handleRequestCode} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      data-testid="input-customer-email"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={requestCodeMutation.isPending}
+                    data-testid="button-request-access"
+                  >
+                    {requestCodeMutation.isPending ? "Sending Code..." : "Request Access"}
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={handleVerifyCode} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="code">Verification Code</Label>
+                    {devCode && (
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Dev Code: <span className="font-mono font-bold">{devCode}</span>
+                      </p>
+                    )}
+                    <Input
+                      id="code"
+                      type="text"
+                      placeholder="Enter 6-digit code"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value)}
+                      maxLength={6}
+                      required
+                      data-testid="input-verification-code"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setVerificationStep("email");
+                        setVerificationCode("");
+                        setDevCode("");
+                      }}
+                      className="w-full"
+                      data-testid="button-back"
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={verifyCodeMutation.isPending}
+                      data-testid="button-verify-code"
+                    >
+                      {verifyCodeMutation.isPending ? "Verifying..." : "Verify"}
+                    </Button>
+                  </div>
+                </form>
+              )}
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">

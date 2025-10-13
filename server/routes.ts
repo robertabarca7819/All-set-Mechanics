@@ -484,24 +484,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "No jobs found for this email" });
       }
 
-      const accessToken = randomBytes(32).toString("hex");
-      
-      for (const job of jobs) {
-        if (!job.customerAccessToken) {
-          await storage.updateJob(job.id, { customerAccessToken: accessToken });
-        }
-      }
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      await storage.createVerificationCode({
+        email,
+        code,
+        expiresAt,
+      });
 
       res.json({ 
-        accessToken,
-        message: "Access token generated successfully",
+        message: "Verification code sent",
+        code,
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid request data", details: error.errors });
       }
       console.error("Request access error:", error);
-      res.status(500).json({ error: "Failed to generate access token" });
+      res.status(500).json({ error: "Failed to send verification code" });
+    }
+  });
+
+  app.post("/api/customer/verify-access", async (req, res) => {
+    try {
+      const schema = z.object({
+        email: z.string().email(),
+        code: z.string(),
+      });
+      const { email, code } = schema.parse(req.body);
+
+      const verificationCode = await storage.getVerificationCodeByEmail(email);
+      
+      if (!verificationCode || verificationCode.code !== code) {
+        return res.status(401).json({ error: "Invalid or expired verification code" });
+      }
+
+      const accessToken = randomBytes(32).toString("hex");
+      const jobs = await storage.getJobsByCustomerEmail(email);
+      
+      for (const job of jobs) {
+        await storage.updateJob(job.id, { customerAccessToken: accessToken });
+      }
+
+      await storage.deleteVerificationCode(verificationCode.id);
+
+      res.json({ 
+        accessToken,
+        message: "Access granted successfully",
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      console.error("Verify access error:", error);
+      res.status(500).json({ error: "Failed to verify code" });
     }
   });
 

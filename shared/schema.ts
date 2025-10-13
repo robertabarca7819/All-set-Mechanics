@@ -116,3 +116,19 @@ export const insertAdminSessionSchema = createInsertSchema(adminSessions).omit({
 
 export type InsertAdminSession = z.infer<typeof insertAdminSessionSchema>;
 export type AdminSession = typeof adminSessions.$inferSelect;
+
+export const customerVerificationCodes = pgTable("customer_verification_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull(),
+  code: text("code").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertCustomerVerificationCodeSchema = createInsertSchema(customerVerificationCodes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCustomerVerificationCode = z.infer<typeof insertCustomerVerificationCodeSchema>;
+export type CustomerVerificationCode = typeof customerVerificationCodes.$inferSelect;

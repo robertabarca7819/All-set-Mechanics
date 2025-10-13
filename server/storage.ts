@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Job, type InsertJob, type Conversation, type InsertConversation, type Message, type InsertMessage, type AdminSession, type InsertAdminSession } from "@shared/schema";
+import { type User, type InsertUser, type Job, type InsertJob, type Conversation, type InsertConversation, type Message, type InsertMessage, type AdminSession, type InsertAdminSession, type CustomerVerificationCode, type InsertCustomerVerificationCode } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -32,6 +32,10 @@ export interface IStorage {
   createAdminSession(session: InsertAdminSession): Promise<AdminSession>;
   getAdminSessionByToken(token: string): Promise<AdminSession | undefined>;
   deleteAdminSession(token: string): Promise<void>;
+  
+  createVerificationCode(code: InsertCustomerVerificationCode): Promise<CustomerVerificationCode>;
+  getVerificationCodeByEmail(email: string): Promise<CustomerVerificationCode | undefined>;
+  deleteVerificationCode(id: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -41,6 +45,7 @@ export class MemStorage implements IStorage {
   private messages: Map<string, Message>;
   private lastMessageByConversationId: Map<string, Message>;
   private adminSessions: Map<string, AdminSession>;
+  private verificationCodes: Map<string, CustomerVerificationCode>;
 
   constructor() {
     this.users = new Map();
@@ -49,6 +54,7 @@ export class MemStorage implements IStorage {
     this.messages = new Map();
     this.lastMessageByConversationId = new Map();
     this.adminSessions = new Map();
+    this.verificationCodes = new Map();
     this.seedData();
   }
 
@@ -410,6 +416,38 @@ export class MemStorage implements IStorage {
 
   async deleteAdminSession(token: string): Promise<void> {
     this.adminSessions.delete(token);
+  }
+
+  async createVerificationCode(insertCode: InsertCustomerVerificationCode): Promise<CustomerVerificationCode> {
+    const id = randomUUID();
+    const code: CustomerVerificationCode = {
+      ...insertCode,
+      id,
+      createdAt: new Date()
+    };
+    this.verificationCodes.set(id, code);
+    return code;
+  }
+
+  async getVerificationCodeByEmail(email: string): Promise<CustomerVerificationCode | undefined> {
+    const codes = Array.from(this.verificationCodes.values())
+      .filter(code => code.email === email)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    
+    if (codes.length === 0) return undefined;
+    
+    const latestCode = codes[0];
+    
+    if (new Date() > new Date(latestCode.expiresAt)) {
+      this.verificationCodes.delete(latestCode.id);
+      return undefined;
+    }
+    
+    return latestCode;
+  }
+
+  async deleteVerificationCode(id: string): Promise<void> {
+    this.verificationCodes.delete(id);
   }
 }
 
