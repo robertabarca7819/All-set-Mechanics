@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Job, type InsertJob, type Conversation, type InsertConversation, type Message, type InsertMessage } from "@shared/schema";
+import { type User, type InsertUser, type Job, type InsertJob, type Conversation, type InsertConversation, type Message, type InsertMessage, type AdminSession, type InsertAdminSession } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -8,6 +8,7 @@ export interface IStorage {
   
   createJob(job: InsertJob): Promise<Job>;
   getJob(id: string): Promise<Job | undefined>;
+  getJobByPaymentLinkToken(token: string): Promise<Job | undefined>;
   getAllJobs(): Promise<Job[]>;
   updateJob(id: string, updates: Partial<Job>): Promise<Job | undefined>;
   
@@ -19,6 +20,10 @@ export interface IStorage {
   createMessage(message: InsertMessage): Promise<Message>;
   getMessagesByConversationId(conversationId: string): Promise<Message[]>;
   getLastMessageByConversationId(conversationId: string): Promise<Message | undefined>;
+  
+  createAdminSession(session: InsertAdminSession): Promise<AdminSession>;
+  getAdminSessionByToken(token: string): Promise<AdminSession | undefined>;
+  deleteAdminSession(token: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -27,6 +32,7 @@ export class MemStorage implements IStorage {
   private conversations: Map<string, Conversation>;
   private messages: Map<string, Message>;
   private lastMessageByConversationId: Map<string, Message>;
+  private adminSessions: Map<string, AdminSession>;
 
   constructor() {
     this.users = new Map();
@@ -34,6 +40,7 @@ export class MemStorage implements IStorage {
     this.conversations = new Map();
     this.messages = new Map();
     this.lastMessageByConversationId = new Map();
+    this.adminSessions = new Map();
     this.seedData();
   }
 
@@ -51,6 +58,13 @@ export class MemStorage implements IStorage {
       customerId: "customer-1",
       providerId: "demo-user-1",
       createdAt: new Date("2025-10-05T10:00:00Z"),
+      contractTerms: null,
+      customerSignature: null,
+      providerSignature: null,
+      signedAt: null,
+      paymentStatus: "pending",
+      checkoutSessionId: null,
+      paymentLinkToken: null,
     };
     this.jobs.set(job1.id, job1);
 
@@ -114,6 +128,13 @@ export class MemStorage implements IStorage {
       customerId: "customer-2",
       providerId: null,
       createdAt: new Date("2025-10-05T09:00:00Z"),
+      contractTerms: null,
+      customerSignature: null,
+      providerSignature: null,
+      signedAt: null,
+      paymentStatus: "pending",
+      checkoutSessionId: null,
+      paymentLinkToken: null,
     };
     this.jobs.set(job2.id, job2);
 
@@ -130,6 +151,13 @@ export class MemStorage implements IStorage {
       customerId: "customer-3",
       providerId: null,
       createdAt: new Date("2025-10-05T08:00:00Z"),
+      contractTerms: null,
+      customerSignature: null,
+      providerSignature: null,
+      signedAt: null,
+      paymentStatus: "pending",
+      checkoutSessionId: null,
+      paymentLinkToken: null,
     };
     this.jobs.set(job3.id, job3);
   }
@@ -158,6 +186,13 @@ export class MemStorage implements IStorage {
       status: insertJob.status || "requested",
       estimatedPrice: insertJob.estimatedPrice || null,
       providerId: insertJob.providerId || null,
+      contractTerms: null,
+      customerSignature: null,
+      providerSignature: null,
+      signedAt: null,
+      paymentStatus: "pending",
+      checkoutSessionId: null,
+      paymentLinkToken: null,
       id,
       createdAt: new Date()
     };
@@ -228,6 +263,39 @@ export class MemStorage implements IStorage {
 
   async getLastMessageByConversationId(conversationId: string): Promise<Message | undefined> {
     return this.lastMessageByConversationId.get(conversationId);
+  }
+
+  async getJobByPaymentLinkToken(token: string): Promise<Job | undefined> {
+    return Array.from(this.jobs.values()).find(
+      (job) => job.paymentLinkToken === token
+    );
+  }
+
+  async createAdminSession(insertSession: InsertAdminSession): Promise<AdminSession> {
+    const id = randomUUID();
+    const session: AdminSession = {
+      ...insertSession,
+      id,
+      createdAt: new Date()
+    };
+    this.adminSessions.set(session.token, session);
+    return session;
+  }
+
+  async getAdminSessionByToken(token: string): Promise<AdminSession | undefined> {
+    const session = this.adminSessions.get(token);
+    if (!session) return undefined;
+    
+    if (session.expiresAt < new Date()) {
+      this.adminSessions.delete(token);
+      return undefined;
+    }
+    
+    return session;
+  }
+
+  async deleteAdminSession(token: string): Promise<void> {
+    this.adminSessions.delete(token);
   }
 }
 

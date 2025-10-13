@@ -1,15 +1,108 @@
-import type { Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { z } from "zod";
 import Stripe from "stripe";
+import { randomBytes } from "crypto";
+import cookieParser from "cookie-parser";
 import { storage } from "./storage";
-import { insertConversationSchema, insertMessageSchema } from "@shared/schema";
+import { insertConversationSchema, insertMessageSchema, insertJobSchema } from "@shared/schema";
 
 const wsClients = new Map<string, WebSocket>();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
+async function adminAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+  const token = req.cookies?.adminToken;
+  
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const session = await storage.getAdminSessionByToken(token);
+  
+  if (!session) {
+    res.clearCookie("adminToken");
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  next();
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Admin authentication endpoints
+  app.post("/api/admin/login", async (req, res) => {
+    try {
+      const schema = z.object({
+        password: z.string(),
+      });
+      const { password } = schema.parse(req.body);
+
+      if (!process.env.ADMIN_PASSWORD) {
+        return res.status(500).json({ error: "Admin password not configured" });
+      }
+
+      if (password !== process.env.ADMIN_PASSWORD) {
+        return res.status(401).json({ error: "Invalid password" });
+      }
+
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      await storage.createAdminSession({
+        token,
+        expiresAt,
+      });
+
+      res.cookie("adminToken", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 24 * 60 * 60 * 1000,
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  app.post("/api/admin/logout", async (req, res) => {
+    try {
+      const token = req.cookies?.adminToken;
+      if (token) {
+        await storage.deleteAdminSession(token);
+      }
+      res.clearCookie("adminToken");
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Logout failed" });
+    }
+  });
+
+  app.get("/api/admin/verify", async (req, res) => {
+    try {
+      const token = req.cookies?.adminToken;
+      
+      if (!token) {
+        return res.json({ authenticated: false });
+      }
+      
+      const session = await storage.getAdminSessionByToken(token);
+      
+      if (!session) {
+        res.clearCookie("adminToken");
+        return res.json({ authenticated: false });
+      }
+      
+      res.json({ authenticated: true });
+    } catch (error) {
+      res.status(500).json({ error: "Verification failed" });
+    }
+  });
+
   app.get("/api/conversations", async (req, res) => {
     try {
       const userId = req.query.userId as string;
@@ -91,6 +184,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/jobs", async (req, res) => {
+    try {
+      const validatedData = insertJobSchema.parse(req.body);
+      const job = await storage.createJob(validatedData);
+      res.json(job);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid job data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create job" });
+    }
+  });
+
   app.get("/api/jobs", async (req, res) => {
     try {
       const jobs = await storage.getAllJobs();
@@ -120,6 +226,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: z.enum(["requested", "accepted", "payment_pending", "confirmed", "completed"]).optional(),
         providerId: z.string().optional(),
         estimatedPrice: z.number().optional(),
+        contractTerms: z.string().optional(),
+        customerSignature: z.string().optional(),
+        providerSignature: z.string().optional(),
+        signedAt: z.date().optional(),
+        paymentStatus: z.string().optional(),
+        checkoutSessionId: z.string().optional(),
+        paymentLinkToken: z.string().optional(),
       });
       const updates = updateSchema.parse(req.body);
       const updatedJob = await storage.updateJob(id, updates);
@@ -135,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/create-payment-intent", async (req, res) => {
+  app.post("/api/checkout-sessions", adminAuthMiddleware, async (req, res) => {
     try {
       const schema = z.object({
         jobId: z.string(),
@@ -152,30 +265,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const subtotal = job.estimatedPrice;
-      const tax = subtotal * 0.09;
+      const tax = Math.round(subtotal * 0.09);
       const total = subtotal + tax;
 
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(total * 100), // Convert to cents
-        currency: "usd",
+      const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: job.title,
+                description: `${job.serviceType} - ${job.description.substring(0, 100)}`,
+              },
+              unit_amount: Math.round(total * 100),
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: `${baseUrl}/contract/${jobId}`,
+        cancel_url: `${baseUrl}/admin`,
         metadata: {
           jobId,
-          jobTitle: job.title,
-          serviceType: job.serviceType,
-        },
-        automatic_payment_methods: {
-          enabled: true,
         },
       });
 
-      res.json({ clientSecret: paymentIntent.client_secret });
+      const paymentLinkToken = randomBytes(32).toString("hex");
+      await storage.updateJob(jobId, { 
+        paymentLinkToken,
+        checkoutSessionId: session.id,
+      });
+
+      res.json({ 
+        sessionId: session.id,
+        paymentLinkToken,
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid request data", details: error.errors });
       }
-      console.error("Payment intent creation error:", error);
-      res.status(500).json({ error: "Failed to create payment intent" });
+      console.error("Checkout session creation error:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
     }
+  });
+
+  app.get("/api/pay/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const job = await storage.getJobByPaymentLinkToken(token);
+      
+      if (!job || !job.checkoutSessionId) {
+        return res.status(404).send("Payment link not found or expired");
+      }
+
+      const session = await stripe.checkout.sessions.retrieve(job.checkoutSessionId);
+      
+      if (session.url) {
+        return res.redirect(303, session.url);
+      }
+
+      res.status(400).send("Invalid checkout session");
+    } catch (error) {
+      console.error("Payment link redirect error:", error);
+      res.status(500).send("Failed to redirect to payment");
+    }
+  });
+
+  app.post("/api/webhooks/stripe", express.raw({ type: "application/json" }), async (req, res) => {
+    const sig = req.headers["stripe-signature"];
+
+    if (!sig) {
+      return res.status(400).send("Missing stripe-signature header");
+    }
+
+    let event;
+
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET!
+      );
+    } catch (err: any) {
+      console.error("Webhook signature verification failed:", err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const jobId = session.metadata?.jobId;
+
+      if (jobId) {
+        await storage.updateJob(jobId, {
+          paymentStatus: "paid",
+          checkoutSessionId: session.id,
+        });
+      }
+    }
+
+    res.json({ received: true });
   });
 
   const httpServer = createServer(app);

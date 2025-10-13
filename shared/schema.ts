@@ -30,6 +30,13 @@ export const jobs = pgTable("jobs", {
   customerId: varchar("customer_id").notNull(),
   providerId: varchar("provider_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  contractTerms: text("contract_terms"),
+  customerSignature: text("customer_signature"),
+  providerSignature: text("provider_signature"),
+  signedAt: timestamp("signed_at"),
+  paymentStatus: text("payment_status").default("pending"),
+  checkoutSessionId: text("checkout_session_id"),
+  paymentLinkToken: text("payment_link_token"),
 });
 
 export const insertJobSchema = createInsertSchema(jobs).omit({
@@ -71,3 +78,18 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+
+export const adminSessions = pgTable("admin_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  token: text("token").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
+export const insertAdminSessionSchema = createInsertSchema(adminSessions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAdminSession = z.infer<typeof insertAdminSessionSchema>;
+export type AdminSession = typeof adminSessions.$inferSelect;
