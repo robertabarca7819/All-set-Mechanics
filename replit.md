@@ -1,8 +1,8 @@
-# MechBook Pro - Professional Mechanical Services Platform
+# All-Set Mechanics - Professional Service Booking Platform
 
 ## Overview
 
-MechBook Pro is a professional mechanical services booking platform that eliminates the need for phone calls and emails. The platform connects customers needing mechanical services with qualified service providers through a streamlined digital workflow. Customers can submit service requests with detailed information, providers can accept jobs, and both parties can communicate through an integrated messaging system. The platform also handles secure prepayment contracts to ensure trust and commitment from both parties.
+All-Set Mechanics is a professional mechanical services booking platform that eliminates the need for phone calls and emails. The platform connects customers needing mechanical services with qualified service providers through a streamlined digital workflow. Customers can submit service requests with detailed information, providers can accept jobs, and both parties can communicate through an integrated messaging system. The platform also handles secure prepayment contracts to ensure trust and commitment from both parties.
 
 ## User Preferences
 
@@ -53,7 +53,7 @@ Preferred communication style: Simple, everyday language.
 - POST /api/customer/cancel - Cancel appointment (24hr policy)
 - POST /api/stripe/webhook - Handle Stripe payment events
 
-**Data Storage Strategy**: The application currently uses an in-memory storage implementation (`MemStorage` class) with interfaces designed for easy migration to a persistent database. The storage layer abstracts data operations through the `IStorage` interface, making it database-agnostic.
+**Data Storage Strategy**: The application uses PostgreSQL database with Drizzle ORM for persistent data storage. The storage layer abstracts data operations through the `IStorage` interface implemented by the `DatabaseStorage` class.
 
 **Session Management**: Configured to use connect-pg-simple for PostgreSQL-based session storage (preparation for production deployment)
 

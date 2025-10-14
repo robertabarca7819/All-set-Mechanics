@@ -1,4 +1,4 @@
-# Design Guidelines: MechBook Pro - Professional Mechanical Services Platform
+# Design Guidelines: All-Set Mechanics - Professional Service Booking Platform
 
 ## Design Approach
 
