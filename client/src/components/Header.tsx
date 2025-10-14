@@ -10,7 +10,7 @@ export function Header() {
         <Link href="/">
           <a className="flex items-center gap-2 hover-elevate active-elevate-2 rounded-md px-3 py-2" data-testid="link-home">
             <Wrench className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">MechBook Pro</span>
+            <span className="text-xl font-bold">All-Set Mechanics</span>
           </a>
         </Link>
 

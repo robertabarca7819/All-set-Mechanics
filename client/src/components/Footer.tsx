@@ -9,10 +9,10 @@ export function Footer() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Wrench className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">MechBook Pro</span>
+              <span className="text-xl font-bold">All-Set Mechanics</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Professional mechanical services booking platform. No phone calls, no hassle.
+              Professional service booking made simple. Your mechanics, all set.
             </p>
           </div>
 
@@ -92,7 +92,7 @@ export function Footer() {
         </div>
 
         <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; 2025 MechBook Pro. All rights reserved.</p>
+          <p>&copy; 2025 All-Set Mechanics. All rights reserved.</p>
         </div>
       </div>
     </footer>
