@@ -1,5 +1,7 @@
-import { type User, type InsertUser, type Job, type InsertJob, type Conversation, type InsertConversation, type Message, type InsertMessage, type AdminSession, type InsertAdminSession, type CustomerVerificationCode, type InsertCustomerVerificationCode } from "@shared/schema";
+import { type User, type InsertUser, type Job, type InsertJob, type Conversation, type InsertConversation, type Message, type InsertMessage, type AdminSession, type InsertAdminSession, type CustomerVerificationCode, type InsertCustomerVerificationCode, users, jobs, conversations, messages, adminSessions, customerVerificationCodes } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq, and, or, desc, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -244,6 +246,7 @@ export class MemStorage implements IStorage {
       ...insertJob,
       status: insertJob.status || "requested",
       estimatedPrice: insertJob.estimatedPrice || null,
+      customerId: insertJob.customerId || null,
       providerId: insertJob.providerId || null,
       contractTerms: null,
       customerSignature: null,
@@ -254,7 +257,7 @@ export class MemStorage implements IStorage {
       paymentLinkToken: null,
       isUrgent: insertJob.isUrgent || "false",
       responseDeadline: insertJob.responseDeadline || null,
-      customerEmail: insertJob.customerEmail || null,
+      customerEmail: insertJob.customerEmail || '',
       customerAccessToken: insertJob.customerAccessToken || null,
       depositAmount: insertJob.depositAmount || 100,
       depositStatus: insertJob.depositStatus || "pending",
@@ -451,4 +454,180 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  async getUser(id: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    return result[0];
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const result = await db.insert(users).values(user).returning();
+    return result[0];
+  }
+
+  async createJob(job: InsertJob): Promise<Job> {
+    const result = await db.insert(jobs).values(job).returning();
+    return result[0];
+  }
+
+  async getJob(id: string): Promise<Job | undefined> {
+    const result = await db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getJobByPaymentLinkToken(token: string): Promise<Job | undefined> {
+    const result = await db.select().from(jobs).where(eq(jobs.paymentLinkToken, token)).limit(1);
+    return result[0];
+  }
+
+  async getJobByCustomerAccessToken(token: string): Promise<Job | undefined> {
+    const result = await db.select().from(jobs).where(eq(jobs.customerAccessToken, token)).limit(1);
+    return result[0];
+  }
+
+  async getAllJobs(): Promise<Job[]> {
+    return await db.select().from(jobs);
+  }
+
+  async getJobsByCustomerEmail(email: string): Promise<Job[]> {
+    return await db.select().from(jobs).where(eq(jobs.customerEmail, email));
+  }
+
+  async getJobsFiltered(filters: {
+    status?: string;
+    serviceType?: string;
+    dateRange?: { start: string; end: string };
+    isUrgent?: boolean;
+  }): Promise<Job[]> {
+    const conditions = [];
+
+    if (filters.status) {
+      conditions.push(eq(jobs.status, filters.status));
+    }
+
+    if (filters.serviceType) {
+      conditions.push(eq(jobs.serviceType, filters.serviceType));
+    }
+
+    if (filters.isUrgent !== undefined) {
+      const isUrgentStr = filters.isUrgent ? "true" : "false";
+      conditions.push(eq(jobs.isUrgent, isUrgentStr));
+    }
+
+    if (filters.dateRange) {
+      const startDate = new Date(filters.dateRange.start);
+      const endDate = new Date(filters.dateRange.end);
+      conditions.push(
+        and(
+          gte(jobs.appointmentDateTime, startDate),
+          lte(jobs.appointmentDateTime, endDate)
+        )
+      );
+    }
+
+    if (conditions.length > 0) {
+      return await db.select().from(jobs).where(and(...conditions));
+    }
+
+    return await db.select().from(jobs);
+  }
+
+  async updateJob(id: string, updates: Partial<Job>): Promise<Job | undefined> {
+    const result = await db.update(jobs).set(updates).where(eq(jobs.id, id)).returning();
+    return result[0];
+  }
+
+  async createConversation(conversation: InsertConversation): Promise<Conversation> {
+    const result = await db.insert(conversations).values(conversation).returning();
+    return result[0];
+  }
+
+  async getConversation(id: string): Promise<Conversation | undefined> {
+    const result = await db.select().from(conversations).where(eq(conversations.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getConversationByJobId(jobId: string): Promise<Conversation | undefined> {
+    const result = await db.select().from(conversations).where(eq(conversations.jobId, jobId)).limit(1);
+    return result[0];
+  }
+
+  async getConversationsByUserId(userId: string): Promise<Conversation[]> {
+    return await db.select().from(conversations).where(
+      or(
+        eq(conversations.customerId, userId),
+        eq(conversations.providerId, userId)
+      )
+    );
+  }
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const result = await db.insert(messages).values(message).returning();
+    return result[0];
+  }
+
+  async getMessagesByConversationId(conversationId: string): Promise<Message[]> {
+    return await db.select().from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(messages.createdAt);
+  }
+
+  async getLastMessageByConversationId(conversationId: string): Promise<Message | undefined> {
+    const result = await db.select().from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(desc(messages.createdAt))
+      .limit(1);
+    return result[0];
+  }
+
+  async createAdminSession(session: InsertAdminSession): Promise<AdminSession> {
+    const result = await db.insert(adminSessions).values(session).returning();
+    return result[0];
+  }
+
+  async getAdminSessionByToken(token: string): Promise<AdminSession | undefined> {
+    const result = await db.select().from(adminSessions)
+      .where(
+        and(
+          eq(adminSessions.token, token),
+          gte(adminSessions.expiresAt, new Date())
+        )
+      )
+      .limit(1);
+    return result[0];
+  }
+
+  async deleteAdminSession(token: string): Promise<void> {
+    await db.delete(adminSessions).where(eq(adminSessions.token, token));
+  }
+
+  async createVerificationCode(code: InsertCustomerVerificationCode): Promise<CustomerVerificationCode> {
+    const result = await db.insert(customerVerificationCodes).values(code).returning();
+    return result[0];
+  }
+
+  async getVerificationCodeByEmail(email: string): Promise<CustomerVerificationCode | undefined> {
+    const result = await db.select().from(customerVerificationCodes)
+      .where(
+        and(
+          eq(customerVerificationCodes.email, email),
+          gte(customerVerificationCodes.expiresAt, new Date())
+        )
+      )
+      .orderBy(desc(customerVerificationCodes.createdAt))
+      .limit(1);
+    return result[0];
+  }
+
+  async deleteVerificationCode(id: string): Promise<void> {
+    await db.delete(customerVerificationCodes).where(eq(customerVerificationCodes.id, id));
+  }
+}
+
+// Use DatabaseStorage instead of MemStorage for PostgreSQL
+export const storage = new DatabaseStorage();
