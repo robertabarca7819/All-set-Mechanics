@@ -20,23 +20,20 @@ export function Header() {
               Home
             </a>
           </Link>
-          <Link href="/messages">
-            <a className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-messages">
-              Messages
-            </a>
-          </Link>
-          <Link href="/provider-dashboard">
-            <a className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-provider">
-              Provider Dashboard
+          <Link href="/provider-login">
+            <a className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-provider-login">
+              Mechanic Login
             </a>
           </Link>
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <ThemeToggle />
-          <Button variant="default" size="default" data-testid="button-get-started">
-            Get Started
-          </Button>
+          <Link href="/request">
+            <Button variant="default" size="default" data-testid="button-request-service">
+              Request Service
+            </Button>
+          </Link>
         </div>
       </div>
     </header>
