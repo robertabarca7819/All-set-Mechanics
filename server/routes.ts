@@ -35,6 +35,31 @@ async function adminAuthMiddleware(req: Request, res: Response, next: NextFuncti
   next();
 }
 
+async function providerAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+  const token = req.cookies?.providerToken;
+  
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const session = await storage.getProviderSessionByToken(token);
+  
+  if (!session) {
+    res.clearCookie("providerToken");
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  // Check if session has expired
+  if (new Date() > new Date(session.expiresAt)) {
+    await storage.deleteProviderSession(session.id);
+    res.clearCookie("providerToken");
+    return res.status(401).json({ error: "Session expired" });
+  }
+  
+  (req as any).providerId = session.providerId;
+  next();
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Admin authentication endpoints
   app.post("/api/admin/login", async (req, res) => {
@@ -115,6 +140,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json({ authenticated: true });
+    } catch (error) {
+      res.status(500).json({ error: "Verification failed" });
+    }
+  });
+
+  // Provider authentication endpoints
+  app.post("/api/provider/register", async (req, res) => {
+    try {
+      const schema = z.object({
+        username: z.string().min(3),
+        password: z.string().min(6),
+      });
+      const { username, password } = schema.parse(req.body);
+
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(409).json({ error: "Username already exists" });
+      }
+
+      const user = await storage.createUser({
+        username,
+        password,
+        role: "provider",
+      });
+
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      await storage.createProviderSession({
+        providerId: user.id,
+        token,
+        expiresAt,
+      });
+
+      res.cookie("providerToken", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      res.json({ 
+        success: true, 
+        user: { id: user.id, username: user.username, role: user.role }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Registration failed" });
+    }
+  });
+
+  app.post("/api/provider/login", async (req, res) => {
+    try {
+      const schema = z.object({
+        username: z.string(),
+        password: z.string(),
+      });
+      const { username, password } = schema.parse(req.body);
+
+      const user = await storage.getUserByUsername(username);
+      if (!user || user.password !== password) {
+        return res.status(401).json({ error: "Invalid username or password" });
+      }
+
+      if (user.role !== "provider") {
+        return res.status(403).json({ error: "Not authorized as a provider" });
+      }
+
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      await storage.createProviderSession({
+        providerId: user.id,
+        token,
+        expiresAt,
+      });
+
+      res.cookie("providerToken", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      res.json({ 
+        success: true,
+        user: { id: user.id, username: user.username, role: user.role }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  app.post("/api/provider/logout", async (req, res) => {
+    try {
+      const token = req.cookies?.providerToken;
+      if (token) {
+        const session = await storage.getProviderSessionByToken(token);
+        if (session) {
+          await storage.deleteProviderSession(session.id);
+        }
+      }
+      res.clearCookie("providerToken");
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Logout failed" });
+    }
+  });
+
+  app.get("/api/provider/verify", async (req, res) => {
+    try {
+      const token = req.cookies?.providerToken;
+      
+      if (!token) {
+        return res.json({ authenticated: false });
+      }
+      
+      const session = await storage.getProviderSessionByToken(token);
+      
+      if (!session) {
+        res.clearCookie("providerToken");
+        return res.json({ authenticated: false });
+      }
+      
+      if (new Date() > new Date(session.expiresAt)) {
+        await storage.deleteProviderSession(session.id);
+        res.clearCookie("providerToken");
+        return res.json({ authenticated: false });
+      }
+
+      const user = await storage.getUser(session.providerId);
+      
+      res.json({ 
+        authenticated: true,
+        user: user ? { id: user.id, username: user.username, role: user.role } : null
+      });
     } catch (error) {
       res.status(500).json({ error: "Verification failed" });
     }
