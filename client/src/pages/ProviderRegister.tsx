@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Link } from "wouter";
-import Header from "@/components/Header";
+import { Header } from "@/components/Header";
 
 export default function ProviderRegister() {
   const [, setLocation] = useLocation();
