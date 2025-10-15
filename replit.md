@@ -18,7 +18,18 @@ Preferred communication style: Simple, everyday language.
 
 **Styling Approach**: Tailwind CSS with a custom design token system. The application implements a dual-theme system (light/dark modes) using CSS custom properties for colors and consistent spacing primitives. Design follows a professional, efficiency-first approach inspired by Linear and Stripe, emphasizing trust and credibility through clean layouts.
 
-**Routing**: Client-side routing implemented with Wouter, a lightweight alternative to React Router. Routes include Home, Provider Dashboard, Messages, and a 404 page.
+**Routing**: Client-side routing implemented with Wouter, a lightweight alternative to React Router. Routes include:
+- / (Home page)
+- /request (Service request form)
+- /provider-register (Provider registration)
+- /provider-login (Provider login)
+- /provider-dashboard (Protected provider dashboard)
+- /admin (Admin dashboard with password authentication)
+- /admin/calendar (Admin calendar view)
+- /my-jobs (Customer self-service portal)
+- /messages (Real-time messaging)
+- /contract/:jobId (Payment contract page)
+- 404 page for unmatched routes
 
 **State Management**: 
 - React Query (TanStack Query) for server state management and caching
@@ -42,6 +53,12 @@ Preferred communication style: Simple, everyday language.
 - POST /api/conversations - Create new conversation
 - POST /api/messages - Send message
 - WebSocket endpoint at /ws for real-time messaging
+
+**Provider Authentication APIs**:
+- POST /api/provider/register - Create new provider account
+- POST /api/provider/login - Authenticate provider
+- POST /api/provider/logout - Destroy provider session
+- GET /api/provider/verify - Verify current provider session
 
 **Scheduling & Payment APIs**:
 - POST /api/deposits/:jobId - Create deposit checkout session (admin only)
@@ -78,6 +95,14 @@ Preferred communication style: Simple, everyday language.
 - id (UUID primary key)
 - username (unique text)
 - password (text)
+- role (text: 'customer', 'provider', or 'admin')
+
+**Provider Sessions Table**:
+- id (UUID primary key)
+- providerId (user reference)
+- sessionToken (unique text)
+- expiresAt (timestamp) - 24-hour expiration
+- createdAt (timestamp)
 
 **Jobs Table**:
 - id (UUID primary key)
@@ -157,6 +182,8 @@ Preferred communication style: Simple, everyday language.
 
 **Security Features**:
 - Admin session expiry enforcement (checks expiresAt field)
+- Provider authentication with cookie-based sessions (24-hour expiration)
+- Password hashing using bcrypt for provider accounts
 - Email verification required for customer access
 - Verification codes expire in 15 minutes
 - One-time use codes (deleted after verification)
