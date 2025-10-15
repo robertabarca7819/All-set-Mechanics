@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Job, type InsertJob, type Conversation, type InsertConversation, type Message, type InsertMessage, type AdminSession, type InsertAdminSession, type CustomerVerificationCode, type InsertCustomerVerificationCode, users, jobs, conversations, messages, adminSessions, customerVerificationCodes } from "@shared/schema";
+import { type User, type InsertUser, type Job, type InsertJob, type Conversation, type InsertConversation, type Message, type InsertMessage, type AdminSession, type InsertAdminSession, type ProviderSession, type InsertProviderSession, type CustomerVerificationCode, type InsertCustomerVerificationCode, users, jobs, conversations, messages, adminSessions, providerSessions, customerVerificationCodes } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, or, desc, gte, lte } from "drizzle-orm";
@@ -35,6 +35,10 @@ export interface IStorage {
   getAdminSessionByToken(token: string): Promise<AdminSession | undefined>;
   deleteAdminSession(token: string): Promise<void>;
   
+  createProviderSession(session: InsertProviderSession): Promise<ProviderSession>;
+  getProviderSessionByToken(token: string): Promise<ProviderSession | undefined>;
+  deleteProviderSession(id: string): Promise<void>;
+  
   createVerificationCode(code: InsertCustomerVerificationCode): Promise<CustomerVerificationCode>;
   getVerificationCodeByEmail(email: string): Promise<CustomerVerificationCode | undefined>;
   deleteVerificationCode(id: string): Promise<void>;
@@ -47,6 +51,7 @@ export class MemStorage implements IStorage {
   private messages: Map<string, Message>;
   private lastMessageByConversationId: Map<string, Message>;
   private adminSessions: Map<string, AdminSession>;
+  private providerSessions: Map<string, ProviderSession>;
   private verificationCodes: Map<string, CustomerVerificationCode>;
 
   constructor() {
@@ -56,6 +61,7 @@ export class MemStorage implements IStorage {
     this.messages = new Map();
     this.lastMessageByConversationId = new Map();
     this.adminSessions = new Map();
+    this.providerSessions = new Map();
     this.verificationCodes = new Map();
     this.seedData();
   }
@@ -235,7 +241,11 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
+    const user: User = { 
+      ...insertUser, 
+      id,
+      role: insertUser.role || "provider"
+    };
     this.users.set(id, user);
     return user;
   }
@@ -421,6 +431,36 @@ export class MemStorage implements IStorage {
     this.adminSessions.delete(token);
   }
 
+  async createProviderSession(insertSession: InsertProviderSession): Promise<ProviderSession> {
+    const id = randomUUID();
+    const session: ProviderSession = {
+      ...insertSession,
+      id,
+      createdAt: new Date()
+    };
+    this.providerSessions.set(session.token, session);
+    return session;
+  }
+
+  async getProviderSessionByToken(token: string): Promise<ProviderSession | undefined> {
+    const session = this.providerSessions.get(token);
+    if (!session) return undefined;
+    
+    if (session.expiresAt < new Date()) {
+      this.providerSessions.delete(token);
+      return undefined;
+    }
+    
+    return session;
+  }
+
+  async deleteProviderSession(id: string): Promise<void> {
+    const session = Array.from(this.providerSessions.values()).find(s => s.id === id);
+    if (session) {
+      this.providerSessions.delete(session.token);
+    }
+  }
+
   async createVerificationCode(insertCode: InsertCustomerVerificationCode): Promise<CustomerVerificationCode> {
     const id = randomUUID();
     const code: CustomerVerificationCode = {
@@ -604,6 +644,27 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAdminSession(token: string): Promise<void> {
     await db.delete(adminSessions).where(eq(adminSessions.token, token));
+  }
+
+  async createProviderSession(session: InsertProviderSession): Promise<ProviderSession> {
+    const result = await db.insert(providerSessions).values(session).returning();
+    return result[0];
+  }
+
+  async getProviderSessionByToken(token: string): Promise<ProviderSession | undefined> {
+    const result = await db.select().from(providerSessions)
+      .where(
+        and(
+          eq(providerSessions.token, token),
+          gte(providerSessions.expiresAt, new Date())
+        )
+      )
+      .limit(1);
+    return result[0];
+  }
+
+  async deleteProviderSession(id: string): Promise<void> {
+    await db.delete(providerSessions).where(eq(providerSessions.id, id));
   }
 
   async createVerificationCode(code: InsertCustomerVerificationCode): Promise<CustomerVerificationCode> {
