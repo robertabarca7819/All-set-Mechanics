@@ -10,6 +10,8 @@ import AdminCalendar from "@/pages/AdminCalendar";
 import CustomerDashboard from "@/pages/CustomerDashboard";
 import ContractPage from "@/pages/ContractPage";
 import ProviderDashboard from "@/pages/ProviderDashboard";
+import ProviderRegister from "@/pages/ProviderRegister";
+import ProviderLogin from "@/pages/ProviderLogin";
 import Messages from "@/pages/Messages";
 import NotFound from "@/pages/not-found";
 
@@ -22,6 +24,8 @@ function Router() {
       <Route path="/admin/calendar" component={AdminCalendar} />
       <Route path="/my-jobs" component={CustomerDashboard} />
       <Route path="/contract/:jobId" component={ContractPage} />
+      <Route path="/provider-register" component={ProviderRegister} />
+      <Route path="/provider-login" component={ProviderLogin} />
       <Route path="/provider-dashboard" component={ProviderDashboard} />
       <Route path="/messages" component={Messages} />
       <Route component={NotFound} />
