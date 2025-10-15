@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { Link } from "wouter";
 import heroImage from "@assets/generated_images/Professional_mechanic_using_tablet_a7b814d2.png";
 
 export function Hero() {
@@ -19,13 +20,17 @@ export function Hero() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Button size="lg" variant="default" data-testid="button-hero-get-started">
-                Get Started
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              <Button size="lg" variant="outline" data-testid="button-hero-how-it-works">
-                How It Works
-              </Button>
+              <Link href="/request">
+                <Button size="lg" variant="default" data-testid="button-hero-get-started">
+                  Get Started
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+              <Link href="/request">
+                <Button size="lg" variant="outline" data-testid="button-hero-how-it-works">
+                  How It Works
+                </Button>
+              </Link>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
