@@ -7,11 +7,13 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  role: text("role").notNull().default("provider"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  role: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -123,6 +125,22 @@ export const insertAdminSessionSchema = createInsertSchema(adminSessions).omit({
 
 export type InsertAdminSession = z.infer<typeof insertAdminSessionSchema>;
 export type AdminSession = typeof adminSessions.$inferSelect;
+
+export const providerSessions = pgTable("provider_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  providerId: varchar("provider_id").notNull(),
+  token: text("token").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
+export const insertProviderSessionSchema = createInsertSchema(providerSessions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProviderSession = z.infer<typeof insertProviderSessionSchema>;
+export type ProviderSession = typeof providerSessions.$inferSelect;
 
 export const customerVerificationCodes = pgTable("customer_verification_codes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
