@@ -7,9 +7,10 @@ import { Footer } from "@/components/Footer";
 import { StatsCard } from "@/components/StatsCard";
 import { JobCard } from "@/components/JobCard";
 import { PaymentModal } from "@/components/PaymentModal";
-import { Briefcase, Clock, DollarSign, CheckCircle2 } from "lucide-react";
+import { Briefcase, Clock, DollarSign, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import type { Job } from "@shared/schema";
 
@@ -19,15 +20,38 @@ export default function ProviderDashboard() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
 
+  const { data: authStatus, isLoading: authLoading } = useQuery<{ 
+    authenticated: boolean; 
+    user?: { id: string; username: string; role: string } 
+  }>({
+    queryKey: ["/api/provider/verify"],
+  });
+
   const { data: jobs = [], isLoading } = useQuery<Job[]>({
     queryKey: ["/api/jobs"],
+    enabled: authStatus?.authenticated === true,
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/provider/logout");
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/provider/verify"] });
+      toast({
+        title: "Logged Out",
+        description: "You have been logged out successfully",
+      });
+      setLocation("/provider-login");
+    },
   });
 
   const acceptJobMutation = useMutation({
     mutationFn: async (jobId: string) => {
       return apiRequest("PATCH", `/api/jobs/${jobId}`, { 
         status: "accepted",
-        providerId: "demo-user-1"
+        providerId: authStatus?.user?.id
       });
     },
     onSuccess: () => {
@@ -59,7 +83,55 @@ export default function ProviderDashboard() {
     setLocation("/messages");
   };
 
-  const currentProviderId = "demo-user-1";
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </main>
+      </div>
+    );
+  }
+
+  if (!authStatus?.authenticated) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center py-20">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Provider Access Required</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                You need to be logged in as a mechanic to access this dashboard.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setLocation("/provider-login")}
+                  className="flex-1"
+                  data-testid="button-login"
+                >
+                  Login
+                </Button>
+                <Button
+                  onClick={() => setLocation("/provider-register")}
+                  variant="outline"
+                  className="flex-1"
+                  data-testid="button-register"
+                >
+                  Register
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  const currentProviderId = authStatus?.user?.id;
   const providerJobs = jobs.filter(job => 
     job.providerId === currentProviderId || job.providerId === null
   );
@@ -70,11 +142,20 @@ export default function ProviderDashboard() {
       <main className="flex-1 bg-muted/30">
         <div className="container mx-auto px-4 py-8">
           <div className="space-y-8">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">Provider Dashboard</h1>
-              <p className="text-muted-foreground">
-                Manage your jobs and track your performance
-              </p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-bold mb-2">Provider Dashboard</h1>
+                <p className="text-muted-foreground">
+                  Welcome back, {authStatus?.user?.username}
+                </p>
+              </div>
+              <Button
+                onClick={() => logoutMutation.mutate()}
+                variant="outline"
+                data-testid="button-logout"
+              >
+                Logout
+              </Button>
             </div>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
