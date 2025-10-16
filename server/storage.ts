@@ -102,6 +102,11 @@ export class MemStorage implements IStorage {
       cancellationFee: 0,
       cancellationFeeStatus: "none",
       cancelledAt: null,
+      mechanicCheckedInAt: null,
+      mechanicCheckedOutAt: null,
+      actualStartTime: null,
+      actualEndTime: null,
+      jobNotes: null,
     };
     this.jobs.set(job1.id, job1);
 
@@ -187,6 +192,11 @@ export class MemStorage implements IStorage {
       cancellationFee: 0,
       cancellationFeeStatus: "none",
       cancelledAt: null,
+      mechanicCheckedInAt: null,
+      mechanicCheckedOutAt: null,
+      actualStartTime: null,
+      actualEndTime: null,
+      jobNotes: null,
     };
     this.jobs.set(job2.id, job2);
 
@@ -225,6 +235,11 @@ export class MemStorage implements IStorage {
       cancellationFee: 0,
       cancellationFeeStatus: "none",
       cancelledAt: null,
+      mechanicCheckedInAt: null,
+      mechanicCheckedOutAt: null,
+      actualStartTime: null,
+      actualEndTime: null,
+      jobNotes: null,
     };
     this.jobs.set(job3.id, job3);
   }
@@ -242,9 +257,14 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
     const user: User = { 
-      ...insertUser, 
+      ...insertUser,
+      firstName: insertUser.firstName ?? null,
+      lastName: insertUser.lastName ?? null,
+      phoneNumber: insertUser.phoneNumber ?? null,
       id,
-      role: insertUser.role || "provider"
+      role: insertUser.role || "provider",
+      employeeId: null,
+      createdAt: new Date()
     };
     this.users.set(id, user);
     return user;
@@ -280,6 +300,11 @@ export class MemStorage implements IStorage {
       cancellationFee: 0,
       cancellationFeeStatus: "none",
       cancelledAt: null,
+      mechanicCheckedInAt: null,
+      mechanicCheckedOutAt: null,
+      actualStartTime: null,
+      actualEndTime: null,
+      jobNotes: null,
       id,
       createdAt: new Date()
     };

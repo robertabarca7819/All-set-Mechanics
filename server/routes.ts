@@ -5,6 +5,7 @@ import { z } from "zod";
 import Stripe from "stripe";
 import { randomBytes } from "crypto";
 import cookieParser from "cookie-parser";
+import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { insertConversationSchema, insertMessageSchema, insertJobSchema } from "@shared/schema";
 
@@ -286,6 +287,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Customer registration endpoint
+  app.post("/api/customer/register", async (req, res) => {
+    try {
+      const schema = z.object({
+        username: z.string().min(3),
+        password: z.string().min(6),
+        firstName: z.string().optional(),
+        lastName: z.string().optional(),
+        phoneNumber: z.string().optional(),
+      });
+      const { username, password, firstName, lastName, phoneNumber } = schema.parse(req.body);
+
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(409).json({ error: "Username already exists" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const user = await storage.createUser({
+        username,
+        password: hashedPassword,
+        role: "customer",
+        firstName,
+        lastName,
+        phoneNumber,
+      });
+
+      res.json({ 
+        success: true, 
+        user: { id: user.id, username: user.username, role: user.role }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Registration failed" });
+    }
+  });
+
   app.get("/api/conversations", async (req, res) => {
     try {
       const userId = req.query.userId as string;
@@ -421,8 +462,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         responseDeadline: z.string().optional(),
         appointmentDateTime: z.string().optional(),
       });
-      const updates = updateSchema.parse(req.body);
-      const updatedJob = await storage.updateJob(id, updates);
+      const parsedUpdates = updateSchema.parse(req.body);
+      
+      const updateData: any = { ...parsedUpdates };
+      if (parsedUpdates.responseDeadline) {
+        updateData.responseDeadline = new Date(parsedUpdates.responseDeadline);
+      }
+      if (parsedUpdates.appointmentDateTime) {
+        updateData.appointmentDateTime = new Date(parsedUpdates.appointmentDateTime);
+      }
+      
+      const updatedJob = await storage.updateJob(id, updateData);
       if (!updatedJob) {
         return res.status(404).json({ error: "Job not found" });
       }

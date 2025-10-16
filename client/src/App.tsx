@@ -12,6 +12,7 @@ import ContractPage from "@/pages/ContractPage";
 import ProviderDashboard from "@/pages/ProviderDashboard";
 import ProviderRegister from "@/pages/ProviderRegister";
 import ProviderLogin from "@/pages/ProviderLogin";
+import CustomerRegister from "@/pages/CustomerRegister";
 import Messages from "@/pages/Messages";
 import NotFound from "@/pages/not-found";
 
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/contract/:jobId" component={ContractPage} />
       <Route path="/provider-register" component={ProviderRegister} />
       <Route path="/provider-login" component={ProviderLogin} />
+      <Route path="/customer-register" component={CustomerRegister} />
       <Route path="/provider-dashboard" component={ProviderDashboard} />
       <Route path="/messages" component={Messages} />
       <Route component={NotFound} />
