@@ -7,6 +7,7 @@ import { Footer } from "@/components/Footer";
 import { StatsCard } from "@/components/StatsCard";
 import { JobCard } from "@/components/JobCard";
 import { PaymentModal } from "@/components/PaymentModal";
+import { JobCheckInOut } from "@/components/JobCheckInOut";
 import { Briefcase, Clock, DollarSign, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -252,6 +253,15 @@ export default function ProviderDashboard() {
                             >
                               Initiate Prepayment Contract
                             </Button>
+                          )}
+                          {(job.status === "confirmed" || job.status === "accepted") && (
+                            <JobCheckInOut
+                              jobId={job.id}
+                              mechanicCheckedInAt={job.mechanicCheckedInAt}
+                              mechanicCheckedOutAt={job.mechanicCheckedOutAt}
+                              actualStartTime={job.actualStartTime}
+                              actualEndTime={job.actualEndTime}
+                            />
                           )}
                         </div>
                       ))}

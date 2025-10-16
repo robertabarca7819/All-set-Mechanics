@@ -42,6 +42,9 @@ export interface IStorage {
   createVerificationCode(code: InsertCustomerVerificationCode): Promise<CustomerVerificationCode>;
   getVerificationCodeByEmail(email: string): Promise<CustomerVerificationCode | undefined>;
   deleteVerificationCode(id: string): Promise<void>;
+  
+  checkInMechanic(jobId: string): Promise<Job | undefined>;
+  checkOutMechanic(jobId: string, jobNotes?: string): Promise<Job | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -517,6 +520,35 @@ export class MemStorage implements IStorage {
   async deleteVerificationCode(id: string): Promise<void> {
     this.verificationCodes.delete(id);
   }
+
+  async checkInMechanic(jobId: string): Promise<Job | undefined> {
+    const job = this.jobs.get(jobId);
+    if (!job) return undefined;
+    
+    const now = new Date();
+    const updatedJob = {
+      ...job,
+      mechanicCheckedInAt: now,
+      actualStartTime: now,
+    };
+    this.jobs.set(jobId, updatedJob);
+    return updatedJob;
+  }
+
+  async checkOutMechanic(jobId: string, jobNotes?: string): Promise<Job | undefined> {
+    const job = this.jobs.get(jobId);
+    if (!job) return undefined;
+    
+    const now = new Date();
+    const updatedJob = {
+      ...job,
+      mechanicCheckedOutAt: now,
+      actualEndTime: now,
+      jobNotes: jobNotes || job.jobNotes,
+    };
+    this.jobs.set(jobId, updatedJob);
+    return updatedJob;
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -712,6 +744,34 @@ export class DatabaseStorage implements IStorage {
 
   async deleteVerificationCode(id: string): Promise<void> {
     await db.delete(customerVerificationCodes).where(eq(customerVerificationCodes.id, id));
+  }
+
+  async checkInMechanic(jobId: string): Promise<Job | undefined> {
+    const now = new Date();
+    const result = await db.update(jobs)
+      .set({ 
+        mechanicCheckedInAt: now,
+        actualStartTime: now,
+      })
+      .where(eq(jobs.id, jobId))
+      .returning();
+    return result[0];
+  }
+
+  async checkOutMechanic(jobId: string, jobNotes?: string): Promise<Job | undefined> {
+    const now = new Date();
+    const updates: any = {
+      mechanicCheckedOutAt: now,
+      actualEndTime: now,
+    };
+    if (jobNotes) {
+      updates.jobNotes = jobNotes;
+    }
+    const result = await db.update(jobs)
+      .set(updates)
+      .where(eq(jobs.id, jobId))
+      .returning();
+    return result[0];
   }
 }
 

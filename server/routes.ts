@@ -497,6 +497,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/jobs/:jobId/check-in", providerAuthMiddleware, async (req, res) => {
+    try {
+      const { jobId } = req.params;
+      const providerId = (req as any).providerId;
+
+      const job = await storage.getJob(jobId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      if (job.providerId !== providerId) {
+        return res.status(403).json({ error: "Not authorized for this job" });
+      }
+
+      if (job.mechanicCheckedInAt) {
+        return res.status(400).json({ error: "Already checked in" });
+      }
+
+      const updatedJob = await storage.checkInMechanic(jobId);
+      res.json({ 
+        success: true, 
+        message: "Checked in successfully",
+        job: updatedJob 
+      });
+    } catch (error) {
+      console.error("Check-in error:", error);
+      res.status(500).json({ error: "Failed to check in" });
+    }
+  });
+
+  app.post("/api/jobs/:jobId/check-out", providerAuthMiddleware, async (req, res) => {
+    try {
+      const { jobId } = req.params;
+      const providerId = (req as any).providerId;
+      const schema = z.object({
+        jobNotes: z.string().optional(),
+      });
+      const { jobNotes } = schema.parse(req.body);
+
+      const job = await storage.getJob(jobId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      if (job.providerId !== providerId) {
+        return res.status(403).json({ error: "Not authorized for this job" });
+      }
+
+      if (!job.mechanicCheckedInAt) {
+        return res.status(400).json({ error: "Must check in before checking out" });
+      }
+
+      if (job.mechanicCheckedOutAt) {
+        return res.status(400).json({ error: "Already checked out" });
+      }
+
+      const updatedJob = await storage.checkOutMechanic(jobId, jobNotes);
+      res.json({ 
+        success: true, 
+        message: "Checked out successfully",
+        job: updatedJob 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      console.error("Check-out error:", error);
+      res.status(500).json({ error: "Failed to check out" });
+    }
+  });
+
   app.post("/api/deposits/:jobId", adminAuthMiddleware, async (req, res) => {
     try {
       const { jobId } = req.params;
