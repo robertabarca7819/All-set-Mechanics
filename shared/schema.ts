@@ -8,6 +8,11 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   role: text("role").notNull().default("provider"),
+  employeeId: text("employee_id").unique(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  phoneNumber: text("phone_number"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -62,6 +67,13 @@ export const jobs = pgTable("jobs", {
   cancellationFee: integer("cancellation_fee").default(0),
   cancellationFeeStatus: text("cancellation_fee_status").default("none"),
   cancelledAt: timestamp("cancelled_at"),
+  
+  // Job site tracking
+  mechanicCheckedInAt: timestamp("mechanic_checked_in_at"),
+  mechanicCheckedOutAt: timestamp("mechanic_checked_out_at"),
+  actualStartTime: timestamp("actual_start_time"),
+  actualEndTime: timestamp("actual_end_time"),
+  jobNotes: text("job_notes"),
 });
 
 export const insertJobSchema = createInsertSchema(jobs).omit({
