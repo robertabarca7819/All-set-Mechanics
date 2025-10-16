@@ -20,6 +20,16 @@ export function Header() {
               Home
             </a>
           </Link>
+          <Link href="/customer-register">
+            <a className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-customer-register">
+              Customer Sign Up
+            </a>
+          </Link>
+          <Link href="/provider-register">
+            <a className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-provider-register">
+              Mechanic Sign Up
+            </a>
+          </Link>
           <Link href="/provider-login">
             <a className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-provider-login">
               Mechanic Login
@@ -29,11 +39,6 @@ export function Header() {
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
-          <Link href="/request">
-            <Button variant="default" size="default" data-testid="button-request-service">
-              Request Service
-            </Button>
-          </Link>
         </div>
       </div>
     </header>
