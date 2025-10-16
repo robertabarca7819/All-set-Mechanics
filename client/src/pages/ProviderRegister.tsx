@@ -15,20 +15,20 @@ export default function ProviderRegister() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [employeeId, setEmployeeId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const registerMutation = useMutation({
-    mutationFn: async (data: { username: string; password: string }) => {
+    mutationFn: async (data: { username: string; password: string; firstName: string; lastName: string; phoneNumber: string }) => {
       const res = await apiRequest("POST", "/api/provider/register", data);
       return res;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/provider/verify"] });
-      toast({
-        title: "Registration Successful",
-        description: "Welcome to All-Set Mechanics!",
-      });
-      setLocation("/provider-dashboard");
+      setEmployeeId(data.employeeId);
     },
     onError: (error: any) => {
       toast({
@@ -42,6 +42,33 @@ export default function ProviderRegister() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!firstName.trim()) {
+      toast({
+        title: "First Name Required",
+        description: "Please enter your first name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!lastName.trim()) {
+      toast({
+        title: "Last Name Required",
+        description: "Please enter your last name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!phoneNumber.trim()) {
+      toast({
+        title: "Phone Number Required",
+        description: "Please enter your phone number",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (password !== confirmPassword) {
       toast({
         title: "Passwords Don't Match",
@@ -60,8 +87,44 @@ export default function ProviderRegister() {
       return;
     }
 
-    registerMutation.mutate({ username, password });
+    registerMutation.mutate({ username, password, firstName, lastName, phoneNumber });
   };
+
+  if (employeeId) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center py-20">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Registration Successful!</CardTitle>
+              <CardDescription>
+                Welcome to All-Set Mechanics
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-muted p-4 rounded-md space-y-2">
+                <p className="text-sm font-medium">Your Employee ID is:</p>
+                <p className="text-2xl font-bold text-primary" data-testid="text-employee-id">
+                  {employeeId}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Please save this for future reference.
+                </p>
+              </div>
+              <Button 
+                className="w-full" 
+                onClick={() => setLocation("/provider-dashboard")}
+                data-testid="button-continue"
+              >
+                Continue to Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -76,6 +139,39 @@ export default function ProviderRegister() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="first-name">First Name</Label>
+                <Input
+                  id="first-name"
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                  data-testid="input-first-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="last-name">Last Name</Label>
+                <Input
+                  id="last-name"
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                  data-testid="input-last-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone-number">Phone Number</Label>
+                <Input
+                  id="phone-number"
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  required
+                  data-testid="input-phone-number"
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
                 <Input

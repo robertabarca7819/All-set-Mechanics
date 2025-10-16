@@ -152,18 +152,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const schema = z.object({
         username: z.string().min(3),
         password: z.string().min(6),
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+        phoneNumber: z.string().min(1),
       });
-      const { username, password } = schema.parse(req.body);
+      const { username, password, firstName, lastName, phoneNumber } = schema.parse(req.body);
 
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
         return res.status(409).json({ error: "Username already exists" });
       }
 
+      const timestamp = Date.now();
+      const randomNum = Math.floor(1000 + Math.random() * 9000);
+      const employeeId = `EMP-${timestamp}-${randomNum}`;
+
       const user = await storage.createUser({
         username,
         password,
         role: "provider",
+        firstName,
+        lastName,
+        phoneNumber,
+        employeeId,
       });
 
       const token = randomBytes(32).toString("hex");
@@ -184,7 +195,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ 
         success: true, 
-        user: { id: user.id, username: user.username, role: user.role }
+        user: { id: user.id, username: user.username, role: user.role },
+        employeeId: user.employeeId
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
