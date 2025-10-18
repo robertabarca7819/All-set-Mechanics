@@ -62,6 +62,31 @@ async function providerAuthMiddleware(req: Request, res: Response, next: NextFun
   next();
 }
 
+async function customerAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+  const token = req.cookies?.customerToken;
+  
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const session = await storage.getCustomerSessionByToken(token);
+  
+  if (!session) {
+    res.clearCookie("customerToken");
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  // Check if session has expired
+  if (new Date() > new Date(session.expiresAt)) {
+    await storage.deleteCustomerSession(session.id);
+    res.clearCookie("customerToken");
+    return res.status(401).json({ error: "Session expired" });
+  }
+  
+  (req as any).customerId = session.customerId;
+  next();
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth (OpenID Connect) for customer quick access
   await setupAuth(app);
@@ -340,6 +365,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid request data", details: error.errors });
       }
       res.status(500).json({ error: "Registration failed" });
+    }
+  });
+
+  // Customer login endpoint
+  app.post("/api/customer/login", async (req, res) => {
+    try {
+      const schema = z.object({
+        username: z.string(),
+        password: z.string(),
+      });
+      const { username, password } = schema.parse(req.body);
+
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(401).json({ error: "Invalid username or password" });
+      }
+
+      if (user.role !== "customer") {
+        return res.status(403).json({ error: "Not authorized as a customer" });
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ error: "Invalid username or password" });
+      }
+
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+      await storage.createCustomerSession({
+        customerId: user.id,
+        token,
+        expiresAt,
+      });
+
+      res.cookie("customerToken", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
+      res.json({ 
+        success: true,
+        user: { id: user.id, username: user.username, role: user.role }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  app.post("/api/customer/logout", async (req, res) => {
+    try {
+      const token = req.cookies?.customerToken;
+      if (token) {
+        const session = await storage.getCustomerSessionByToken(token);
+        if (session) {
+          await storage.deleteCustomerSession(session.id);
+        }
+      }
+      res.clearCookie("customerToken");
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Logout failed" });
+    }
+  });
+
+  app.get("/api/customer/verify", async (req, res) => {
+    try {
+      const token = req.cookies?.customerToken;
+      
+      if (!token) {
+        return res.json({ authenticated: false });
+      }
+      
+      const session = await storage.getCustomerSessionByToken(token);
+      
+      if (!session) {
+        res.clearCookie("customerToken");
+        return res.json({ authenticated: false });
+      }
+      
+      if (new Date() > new Date(session.expiresAt)) {
+        await storage.deleteCustomerSession(session.id);
+        res.clearCookie("customerToken");
+        return res.json({ authenticated: false });
+      }
+
+      const user = await storage.getUser(session.customerId);
+      
+      res.json({ 
+        authenticated: true,
+        user: user ? { id: user.id, username: user.username, role: user.role } : null
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Verification failed" });
     }
   });
 

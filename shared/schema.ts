@@ -159,6 +159,22 @@ export const insertProviderSessionSchema = createInsertSchema(providerSessions).
 export type InsertProviderSession = z.infer<typeof insertProviderSessionSchema>;
 export type ProviderSession = typeof providerSessions.$inferSelect;
 
+export const customerSessions = pgTable("customer_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerId: varchar("customer_id").notNull(),
+  token: text("token").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
+export const insertCustomerSessionSchema = createInsertSchema(customerSessions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCustomerSession = z.infer<typeof insertCustomerSessionSchema>;
+export type CustomerSession = typeof customerSessions.$inferSelect;
+
 export const customerVerificationCodes = pgTable("customer_verification_codes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").notNull(),
