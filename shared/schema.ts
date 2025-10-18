@@ -12,6 +12,7 @@ export const users = pgTable("users", {
   firstName: text("first_name"),
   lastName: text("last_name"),
   phoneNumber: text("phone_number"),
+  profileImageUrl: text("profile_image_url"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -173,3 +174,18 @@ export const insertCustomerVerificationCodeSchema = createInsertSchema(customerV
 
 export type InsertCustomerVerificationCode = z.infer<typeof insertCustomerVerificationCodeSchema>;
 export type CustomerVerificationCode = typeof customerVerificationCodes.$inferSelect;
+
+// Sessions table for Replit Auth (OpenID Connect)
+export const sessions = pgTable("sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sid: text("sid").notNull().unique(),
+  sess: text("sess").notNull(),
+  expire: timestamp("expire").notNull(),
+});
+
+export const insertSessionSchema = createInsertSchema(sessions).omit({
+  id: true,
+});
+
+export type InsertSession = z.infer<typeof insertSessionSchema>;
+export type Session = typeof sessions.$inferSelect;

@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser";
 import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { insertConversationSchema, insertMessageSchema, insertJobSchema } from "@shared/schema";
+import { setupAuth, isAuthenticated, getUserIdFromClaims } from "./replitAuth";
 
 const wsClients = new Map<string, WebSocket>();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -62,6 +63,9 @@ async function providerAuthMiddleware(req: Request, res: Response, next: NextFun
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup Replit Auth (OpenID Connect) for customer quick access
+  await setupAuth(app);
+  
   // Admin authentication endpoints
   app.post("/api/admin/login", async (req, res) => {
     try {
@@ -494,6 +498,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid update data", details: error.errors });
       }
       res.status(500).json({ error: "Failed to update job" });
+    }
+  });
+
+  // Replit Auth endpoints for customer quick access
+  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserIdFromClaims(req.user.claims);
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  app.get("/api/customer/jobs-by-email", isAuthenticated, async (req: any, res) => {
+    try {
+      const userEmail = req.user.claims.email;
+      if (!userEmail) {
+        return res.status(400).json({ error: "No email associated with this account" });
+      }
+      const jobs = await storage.getJobsByCustomerEmail(userEmail);
+      res.json(jobs);
+    } catch (error) {
+      console.error("Error fetching customer jobs:", error);
+      res.status(500).json({ error: "Failed to fetch jobs" });
     }
   });
 

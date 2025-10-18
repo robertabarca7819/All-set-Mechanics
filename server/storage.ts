@@ -7,6 +7,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: Partial<InsertUser> & { id: string }): Promise<User>;
   
   createJob(job: InsertJob): Promise<Job>;
   getJob(id: string): Promise<Job | undefined>;
@@ -271,6 +272,38 @@ export class MemStorage implements IStorage {
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async upsertUser(user: Partial<InsertUser> & { id: string }): Promise<User> {
+    const existing = await this.getUser(user.id);
+    if (existing) {
+      // Update existing user
+      const updatedUser: User = {
+        ...existing,
+        ...user,
+        id: user.id, // Ensure ID doesn't change
+        createdAt: existing.createdAt, // Keep original creation date
+      };
+      this.users.set(user.id, updatedUser);
+      return updatedUser;
+    } else {
+      // Create new user with provided ID
+      const newUser: User = {
+        username: user.username || '',
+        password: user.password || '',
+        role: user.role || 'customer',
+        employeeId: user.employeeId || null,
+        firstName: user.firstName || null,
+        lastName: user.lastName || null,
+        phoneNumber: user.phoneNumber || null,
+        profileImageUrl: user.profileImageUrl || null,
+        ...user,
+        id: user.id,
+        createdAt: new Date(),
+      };
+      this.users.set(user.id, newUser);
+      return newUser;
+    }
   }
 
   async createJob(insertJob: InsertJob): Promise<Job> {
@@ -564,6 +597,28 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(user: InsertUser): Promise<User> {
     const result = await db.insert(users).values(user).returning();
+    return result[0];
+  }
+
+  async upsertUser(user: Partial<InsertUser> & { id: string }): Promise<User> {
+    const result = await db
+      .insert(users)
+      .values({
+        ...user,
+        username: user.username!,
+        password: user.password!,
+        role: user.role || 'customer',
+      })
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          phoneNumber: user.phoneNumber,
+          profileImageUrl: user.profileImageUrl,
+        },
+      })
+      .returning();
     return result[0];
   }
 
