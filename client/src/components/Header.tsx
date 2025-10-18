@@ -25,6 +25,11 @@ export function Header() {
               Customer Sign Up
             </a>
           </Link>
+          <Link href="/customer-login">
+            <a className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-customer-login">
+              Customer Login
+            </a>
+          </Link>
           <Link href="/provider-register">
             <a className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-provider-register">
               Mechanic Sign Up
