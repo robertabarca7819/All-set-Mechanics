@@ -17,6 +17,7 @@ import CustomerRegister from "@/pages/CustomerRegister";
 import CustomerLogin from "@/pages/CustomerLogin";
 import QuickAccess from "@/pages/QuickAccess";
 import Messages from "@/pages/Messages";
+import TestStripe from "@/pages/TestStripe";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -36,6 +37,7 @@ function Router() {
       <Route path="/quick-access" component={QuickAccess} />
       <Route path="/provider-dashboard" component={ProviderDashboard} />
       <Route path="/messages" component={Messages} />
+      <Route path="/test-stripe" component={TestStripe} />
       <Route component={NotFound} />
     </Switch>
   );

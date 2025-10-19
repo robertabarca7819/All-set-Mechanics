@@ -725,6 +725,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint to verify Stripe configuration
+  app.get("/api/test-stripe", async (req, res) => {
+    try {
+      // Check if Stripe key is configured
+      if (!process.env.STRIPE_SECRET_KEY) {
+        return res.status(500).json({ 
+          error: "Stripe secret key not configured",
+          keyPresent: false 
+        });
+      }
+
+      // Check key format
+      const key = process.env.STRIPE_SECRET_KEY;
+      const isLiveKey = key.startsWith('sk_live_');
+      const isTestKey = key.startsWith('sk_test_');
+      
+      if (!isLiveKey && !isTestKey) {
+        return res.status(500).json({ 
+          error: "Invalid Stripe key format",
+          keyPresent: true,
+          keyType: "invalid"
+        });
+      }
+
+      // Try to make a simple API call to verify the key works
+      try {
+        // List payment methods (this is a safe read-only operation)
+        const paymentMethods = await stripe.paymentMethods.list({ limit: 1 });
+        
+        return res.json({ 
+          success: true,
+          keyType: isLiveKey ? "live" : "test",
+          keyPresent: true,
+          apiConnection: "successful",
+          message: `Stripe ${isLiveKey ? 'LIVE' : 'TEST'} key is valid and working`
+        });
+      } catch (stripeError: any) {
+        // If we get an authentication error, the key format is correct but invalid
+        if (stripeError.statusCode === 401) {
+          return res.status(401).json({ 
+            error: "Stripe authentication failed - key is invalid",
+            keyPresent: true,
+            keyType: isLiveKey ? "live" : "test",
+            apiConnection: "failed",
+            stripeError: stripeError.message
+          });
+        }
+        
+        // For other errors, the key might be valid but there's another issue
+        return res.status(500).json({ 
+          error: "Stripe API call failed",
+          keyPresent: true,
+          keyType: isLiveKey ? "live" : "test",
+          apiConnection: "error",
+          stripeError: stripeError.message
+        });
+      }
+    } catch (error: any) {
+      console.error("Test Stripe endpoint error:", error);
+      return res.status(500).json({ 
+        error: "Failed to test Stripe configuration",
+        details: error.message 
+      });
+    }
+  });
+
   app.post("/api/deposits/:jobId", adminAuthMiddleware, async (req, res) => {
     try {
       const { jobId } = req.params;
