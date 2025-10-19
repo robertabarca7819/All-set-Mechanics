@@ -9,6 +9,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -30,12 +32,12 @@ interface PaymentModalProps {
   onPaymentSuccess?: (jobId: string) => void;
 }
 
-function PaymentForm({ 
-  jobTitle, 
-  serviceType, 
-  subtotal, 
-  tax, 
-  total, 
+function PaymentForm({
+  jobTitle,
+  serviceType,
+  subtotal,
+  tax,
+  total,
   onCancel,
   onSuccess
 }: {
@@ -191,6 +193,7 @@ export function PaymentModal({
   onPaymentSuccess,
 }: PaymentModalProps) {
   const [clientSecret, setClientSecret] = useState<string>("");
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (open && jobId) {
@@ -210,34 +213,72 @@ export function PaymentModal({
     onPaymentSuccess?.(jobId);
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg" data-testid="modal-payment">
+  const content = (
+    <>
+      {isMobile ? (
+        <DrawerHeader>
+          <DrawerTitle className="text-2xl">Prepayment Contract</DrawerTitle>
+        </DrawerHeader>
+      ) : (
         <DialogHeader>
           <DialogTitle className="text-2xl">Prepayment Contract</DialogTitle>
-          <DialogDescription>
-            Review the details and complete your secure payment
-          </DialogDescription>
         </DialogHeader>
+      )}
+    </>
+  );
 
-        {clientSecret ? (
-          <Elements stripe={stripePromise} options={{ clientSecret }}>
-            <PaymentForm
-              jobTitle={jobTitle}
-              serviceType={serviceType}
-              subtotal={subtotal}
-              tax={tax}
-              total={total}
-              onCancel={() => onOpenChange(false)}
-              onSuccess={handleSuccess}
-            />
-          </Elements>
-        ) : (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+  return (
+    <>
+      {isMobile ? (
+        <Drawer open={open} onOpenChange={onOpenChange}>
+          <DrawerContent data-testid="modal-payment">
+            {content}
+            {clientSecret ? (
+              <Elements stripe={stripePromise} options={{ clientSecret }}>
+                <PaymentForm
+                  jobTitle={jobTitle}
+                  serviceType={serviceType}
+                  subtotal={subtotal}
+                  tax={tax}
+                  total={total}
+                  onCancel={() => onOpenChange(false)}
+                  onSuccess={handleSuccess}
+                />
+              </Elements>
+            ) : (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent className="sm:max-w-lg" data-testid="modal-payment">
+            {content}
+            <DialogDescription>
+              Review the details and complete your secure payment
+            </DialogDescription>
+            {clientSecret ? (
+              <Elements stripe={stripePromise} options={{ clientSecret }}>
+                <PaymentForm
+                  jobTitle={jobTitle}
+                  serviceType={serviceType}
+                  subtotal={subtotal}
+                  tax={tax}
+                  total={total}
+                  onCancel={() => onOpenChange(false)}
+                  onSuccess={handleSuccess}
+                />
+              </Elements>
+            ) : (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }

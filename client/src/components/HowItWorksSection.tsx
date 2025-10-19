@@ -24,22 +24,22 @@ const steps = [
 
 export function HowItWorksSection() {
   return (
-    <section className="py-20 bg-muted/30">
-      <div className="container mx-auto px-4">
-        <div className="text-center space-y-4 mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold">How It Works</h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+    <section className="py-12 sm:py-16 lg:py-20 bg-muted/30">
+      <div className="container px-4">
+        <div className="text-center space-y-4 mb-8 sm:mb-12 lg:mb-16">
+          <h2 className="text-3xl sm:text-4xl font-bold">How It Works</h2>
+          <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
             Get professional mechanical services in three simple steps
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
           {steps.map((step, index) => {
             const Icon = step.icon;
             return (
               <Card
                 key={index}
-                className="p-8 hover-elevate transition-all"
+                className="p-6 sm:p-8 hover-elevate transition-all"
                 data-testid={`card-step-${index + 1}`}
               >
                 <div className="space-y-4">
@@ -47,12 +47,12 @@ export function HowItWorksSection() {
                     <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                       <Icon className="h-6 w-6 text-primary" />
                     </div>
-                    <span className="text-4xl font-bold text-muted-foreground/20">
+                    <span className="text-3xl sm:text-4xl font-bold text-muted-foreground/20">
                       {step.number}
                     </span>
                   </div>
-                  <h3 className="text-xl font-semibold">{step.title}</h3>
-                  <p className="text-muted-foreground">{step.description}</p>
+                  <h3 className="text-lg sm:text-xl font-semibold">{step.title}</h3>
+                  <p className="text-sm sm:text-base text-muted-foreground">{step.description}</p>
                 </div>
               </Card>
             );

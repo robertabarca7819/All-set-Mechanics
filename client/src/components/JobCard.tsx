@@ -1,7 +1,7 @@
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, DollarSign, MessageSquare } from "lucide-react";
+import { MapPin, Clock, DollarSign, MessageSquare, Calendar } from "lucide-react";
 
 export type JobStatus = "requested" | "accepted" | "payment_pending" | "confirmed" | "completed";
 
@@ -28,6 +28,39 @@ const statusConfig: Record<JobStatus, { label: string; className: string }> = {
   completed: { label: "Completed", className: "bg-purple-500 text-white" },
 };
 
+// Helper function to format relative time (e.g., "2 hours ago")
+const formatRelativeTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+  return `${Math.floor(diffInSeconds / 86400)} days ago`;
+};
+
+// Helper function to format date
+const formatDate = (dateString: string): string => {
+  return new Date(dateString).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+};
+
+// Helper function to get status badge variant
+const getStatusVariant = (status: JobStatus): "secondary" | "default" | "destructive" | "outline" | "ghost" | "link" | null => {
+  switch (status) {
+    case "requested": return "secondary";
+    case "accepted": return "default";
+    case "payment_pending": return "outline";
+    case "confirmed": return "default";
+    case "completed": return "ghost";
+    default: return "secondary";
+  }
+};
+
 export function JobCard({
   serviceType,
   title,
@@ -44,44 +77,49 @@ export function JobCard({
   const statusInfo = statusConfig[status];
 
   return (
-    <Card className="hover-elevate transition-all" data-testid={`card-job`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <Badge variant="secondary" data-testid="badge-service-type">
+    <Card className="hover:shadow-lg transition-shadow" data-testid={`card-job`}>
+      <CardHeader className="p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+          <Badge variant="secondary" className="text-xs w-fit" data-testid="badge-service-type">
             {serviceType}
           </Badge>
+          <span className="text-xs sm:text-sm text-muted-foreground" data-testid="text-relative-time">
+            {formatRelativeTime(preferredDate)}
+          </span>
+        </div>
+        <CardTitle className="text-lg sm:text-xl line-clamp-1" data-testid="text-job-title">
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
+        <p className="text-sm sm:text-base text-muted-foreground line-clamp-2" data-testid="text-description">
+          {description}
+        </p>
+        <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
+          <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-2 flex-shrink-0" />
+          <span className="line-clamp-1" data-testid="text-location">{location}</span>
+        </div>
+        {preferredDate && (
+          <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
+            <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-2 flex-shrink-0" />
+            <span data-testid="text-datetime">
+              {preferredDate} at {preferredTime}
+            </span>
+          </div>
+        )}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0 pt-2 sm:pt-4 border-t pt-4">
+          {estimatedPrice !== null && estimatedPrice !== undefined && (
+            <span className="text-xl sm:text-2xl font-bold text-primary" data-testid="text-price">
+              <DollarSign className="h-5 w-5 inline-block mr-1" />
+              {estimatedPrice}
+            </span>
+          )}
           <Badge className={statusInfo.className} data-testid="badge-status">
             {statusInfo.label}
           </Badge>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <h3 className="text-lg font-semibold line-clamp-1" data-testid="text-job-title">
-          {title}
-        </h3>
-        <p className="text-sm text-muted-foreground line-clamp-2" data-testid="text-description">
-          {description}
-        </p>
-        <div className="space-y-2 pt-2">
-          <div className="flex items-center gap-2 text-sm">
-            <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <span className="text-muted-foreground" data-testid="text-location">{location}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <span className="text-muted-foreground" data-testid="text-datetime">
-              {preferredDate} at {preferredTime}
-            </span>
-          </div>
-        </div>
       </CardContent>
-      <CardFooter className="flex items-center justify-between gap-2 pt-4">
-        {estimatedPrice && (
-          <div className="flex items-center gap-1 text-primary font-semibold" data-testid="text-price">
-            <DollarSign className="h-5 w-5" />
-            <span className="text-lg">{estimatedPrice}</span>
-          </div>
-        )}
+      <CardFooter className="flex items-center justify-between gap-2 p-4 sm:p-6 pt-4">
         <div className="flex gap-2 ml-auto flex-wrap">
           {onMessage && (
             <Button variant="outline" size="sm" onClick={onMessage} data-testid="button-message">

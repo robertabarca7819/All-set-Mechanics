@@ -11,6 +11,7 @@ import { Header } from "@/components/Header";
 import { Calendar, Clock, MapPin, AlertCircle, Loader2 } from "lucide-react";
 import type { Job } from "@shared/schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import Link from "next/link";
 
 export default function CustomerDashboard() {
   const { toast } = useToast();
@@ -202,7 +203,7 @@ export default function CustomerDashboard() {
     const now = new Date();
     const appointmentDate = new Date(job.appointmentDateTime);
     const hoursUntil = (appointmentDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-    
+
     if (hoursUntil < 24 && hoursUntil > 0) {
       return "Rescheduling or cancelling within 24 hours requires a $50 fee";
     }
@@ -218,7 +219,7 @@ export default function CustomerDashboard() {
             <CardHeader>
               <CardTitle>Customer Dashboard</CardTitle>
               <CardDescription>
-                {verificationStep === "email" 
+                {verificationStep === "email"
                   ? "Enter your email to receive a verification code"
                   : "Enter the 6-digit code sent to your email"}
               </CardDescription>
@@ -330,44 +331,38 @@ export default function CustomerDashboard() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-background">
       <Header />
-      <main className="flex-1 py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">My Jobs</h1>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsAuthenticated(false);
-                setAccessToken("");
-                localStorage.removeItem("customerAccessToken");
-              }}
-              data-testid="button-logout"
-            >
-              Logout
-            </Button>
-          </div>
 
+      <div className="container py-4 sm:py-6 lg:py-8 px-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold">My Jobs</h1>
+          <Link href="/request">
+            <a className="w-full sm:w-auto"><Button className="w-full sm:w-auto">Request New Service</Button></a>
+          </Link>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
           {isLoading ? (
-            <div className="flex justify-center py-12">
+            <div className="flex justify-center py-12 col-span-full">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
           ) : !jobs || jobs.length === 0 ? (
-            <Card>
+            <Card className="col-span-full">
               <CardContent className="py-12 text-center">
                 <p className="text-muted-foreground">No jobs found</p>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-6" data-testid="div-jobs-list">
+            <div className="col-span-full grid gap-6" data-testid="div-jobs-list">
               {jobs.map((job) => (
-                <Card key={job.id} data-testid={`card-job-${job.id}`}>
+                <Card key={job.id} data-testid={`card-job-${job.id}`} className="col-span-full">
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="text-xl">{job.title}</CardTitle>
-                        <CardDescription className="flex items-center gap-2 mt-2">
+                        <CardDescription className="flex items-center gap-2 mt-2 flex-wrap">
                           <Badge variant="outline">{job.serviceType}</Badge>
                           {job.isUrgent === "true" && (
                             <Badge className="bg-orange-500">
@@ -422,7 +417,7 @@ export default function CustomerDashboard() {
                     )}
 
                     {canRescheduleOrCancel(job) && (
-                      <div className="flex gap-2 pt-2">
+                      <div className="flex flex-col sm:flex-row gap-2 pt-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -432,6 +427,7 @@ export default function CustomerDashboard() {
                             setNewTime(job.preferredTime);
                           }}
                           data-testid={`button-reschedule-${job.id}`}
+                          className="w-full sm:w-auto"
                         >
                           <Clock className="h-4 w-4 mr-2" />
                           Reschedule
@@ -441,6 +437,7 @@ export default function CustomerDashboard() {
                           size="sm"
                           onClick={() => handleCancel(job.id)}
                           data-testid={`button-cancel-${job.id}`}
+                          className="w-full sm:w-auto"
                         >
                           Cancel Appointment
                         </Button>
@@ -452,7 +449,7 @@ export default function CustomerDashboard() {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       <Dialog open={rescheduleDialog.open} onOpenChange={(open) => setRescheduleDialog({ open, job: null })}>
         <DialogContent>

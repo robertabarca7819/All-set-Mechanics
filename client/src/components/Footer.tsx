@@ -3,96 +3,36 @@ import { Wrench } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="border-t bg-muted/30 mt-20">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid md:grid-cols-4 gap-8">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Wrench className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">All-Set Mechanics</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Professional service booking made simple. Your mechanics, all set.
+    <footer className="border-t bg-muted/30 py-8 sm:py-12">
+      <div className="container px-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+          <div>
+            <h3 className="font-bold text-base sm:text-lg mb-3 sm:mb-4">MobileWrench</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Professional mobile mechanics at your service
             </p>
           </div>
-
-          <div className="space-y-4">
-            <h3 className="font-semibold">Company</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link href="/about">
-                  <a className="hover:text-primary transition-colors" data-testid="link-footer-about">
-                    About Us
-                  </a>
-                </Link>
-              </li>
-              <li>
-                <Link href="/how-it-works">
-                  <a className="hover:text-primary transition-colors" data-testid="link-footer-how">
-                    How It Works
-                  </a>
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact">
-                  <a className="hover:text-primary transition-colors" data-testid="link-footer-contact">
-                    Contact
-                  </a>
-                </Link>
-              </li>
+          <div>
+            <h4 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Quick Links</h4>
+            <ul className="space-y-2 text-xs sm:text-sm">
+              <li><Link href="/request"><a className="text-muted-foreground hover:text-foreground">Request Service</a></Link></li>
+              <li><Link href="/provider-register"><a className="text-muted-foreground hover:text-foreground">Become a Mechanic</a></Link></li>
             </ul>
           </div>
-
-          <div className="space-y-4">
-            <h3 className="font-semibold">Support</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link href="/help">
-                  <a className="hover:text-primary transition-colors" data-testid="link-footer-help">
-                    Help Center
-                  </a>
-                </Link>
-              </li>
-              <li>
-                <Link href="/faq">
-                  <a className="hover:text-primary transition-colors" data-testid="link-footer-faq">
-                    FAQ
-                  </a>
-                </Link>
-              </li>
-              <li>
-                <Link href="/safety">
-                  <a className="hover:text-primary transition-colors" data-testid="link-footer-safety">
-                    Safety Guidelines
-                  </a>
-                </Link>
-              </li>
+          <div>
+            <h4 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Legal</h4>
+            <ul className="space-y-2 text-xs sm:text-sm">
+              <li><a href="#" className="text-muted-foreground hover:text-foreground">Privacy Policy</a></li>
+              <li><a href="#" className="text-muted-foreground hover:text-foreground">Terms of Service</a></li>
             </ul>
           </div>
-
-          <div className="space-y-4">
-            <h3 className="font-semibold">Legal</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link href="/privacy">
-                  <a className="hover:text-primary transition-colors" data-testid="link-footer-privacy">
-                    Privacy Policy
-                  </a>
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms">
-                  <a className="hover:text-primary transition-colors" data-testid="link-footer-terms">
-                    Terms of Service
-                  </a>
-                </Link>
-              </li>
-            </ul>
+          <div>
+            <h4 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Contact</h4>
+            <p className="text-xs sm:text-sm text-muted-foreground">support@mobilewrench.com</p>
           </div>
         </div>
-
-        <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; 2025 All-Set Mechanics. All rights reserved.</p>
+        <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t text-center text-xs sm:text-sm text-muted-foreground">
+          © {new Date().getFullYear()} MobileWrench. All rights reserved.
         </div>
       </div>
     </footer>

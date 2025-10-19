@@ -241,6 +241,26 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+
+  /* Mobile optimizations */
+  @media (max-width: 768px) {
+    html {
+      font-size: 16px; /* Prevent font boosting on mobile */
+    }
+    
+    /* Improve tap targets */
+    button, a {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    /* Prevent text selection on interactive elements */
+    button, a {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      user-select: none;
+    }
+  }
 }
 
 /**
