@@ -593,7 +593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contractTerms: z.string().optional(),
         customerSignature: z.string().optional(),
         providerSignature: z.string().optional(),
-        signedAt: z.string().optional(),
+        signedAt: z.date().optional(),
         paymentStatus: z.string().optional(),
         checkoutSessionId: z.string().optional(),
         paymentLinkToken: z.string().optional(),
@@ -610,9 +610,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (parsedUpdates.appointmentDateTime) {
         updateData.appointmentDateTime = new Date(parsedUpdates.appointmentDateTime);
-      }
-      if (parsedUpdates.signedAt) {
-        updateData.signedAt = new Date(parsedUpdates.signedAt);
       }
       
       const updatedJob = await storage.updateJob(id, updateData);
@@ -722,72 +719,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Check-out error:", error);
       res.status(500).json({ error: "Failed to check out" });
-    }
-  });
-
-  // Test endpoint to verify Stripe configuration
-  app.get("/api/test-stripe", async (req, res) => {
-    try {
-      // Check if Stripe key is configured
-      if (!process.env.STRIPE_SECRET_KEY) {
-        return res.status(500).json({ 
-          error: "Stripe secret key not configured",
-          keyPresent: false 
-        });
-      }
-
-      // Check key format
-      const key = process.env.STRIPE_SECRET_KEY;
-      const isLiveKey = key.startsWith('sk_live_');
-      const isTestKey = key.startsWith('sk_test_');
-      
-      if (!isLiveKey && !isTestKey) {
-        return res.status(500).json({ 
-          error: "Invalid Stripe key format",
-          keyPresent: true,
-          keyType: "invalid"
-        });
-      }
-
-      // Try to make a simple API call to verify the key works
-      try {
-        // List payment methods (this is a safe read-only operation)
-        const paymentMethods = await stripe.paymentMethods.list({ limit: 1 });
-        
-        return res.json({ 
-          success: true,
-          keyType: isLiveKey ? "live" : "test",
-          keyPresent: true,
-          apiConnection: "successful",
-          message: `Stripe ${isLiveKey ? 'LIVE' : 'TEST'} key is valid and working`
-        });
-      } catch (stripeError: any) {
-        // If we get an authentication error, the key format is correct but invalid
-        if (stripeError.statusCode === 401) {
-          return res.status(401).json({ 
-            error: "Stripe authentication failed - key is invalid",
-            keyPresent: true,
-            keyType: isLiveKey ? "live" : "test",
-            apiConnection: "failed",
-            stripeError: stripeError.message
-          });
-        }
-        
-        // For other errors, the key might be valid but there's another issue
-        return res.status(500).json({ 
-          error: "Stripe API call failed",
-          keyPresent: true,
-          keyType: isLiveKey ? "live" : "test",
-          apiConnection: "error",
-          stripeError: stripeError.message
-        });
-      }
-    } catch (error: any) {
-      console.error("Test Stripe endpoint error:", error);
-      return res.status(500).json({ 
-        error: "Failed to test Stripe configuration",
-        details: error.message 
-      });
     }
   });
 

@@ -272,7 +272,6 @@ export class MemStorage implements IStorage {
       lastName: insertUser.lastName ?? null,
       phoneNumber: insertUser.phoneNumber ?? null,
       employeeId: insertUser.employeeId ?? null,
-      profileImageUrl: insertUser.profileImageUrl ?? null,
       id,
       role: insertUser.role || "provider",
       createdAt: new Date()

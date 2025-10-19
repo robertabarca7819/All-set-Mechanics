@@ -9,13 +9,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { Header } from "@/components/Header";
 import { Link } from "wouter";
 import { CalendarDays, MapPin, DollarSign, LogOut, Mail, User, Wrench } from "lucide-react";
-import type { Job } from "@shared/schema";
 
 export default function QuickAccess() {
   const [, setLocation] = useLocation();
   const { user, isLoading: isLoadingAuth, isAuthenticated } = useAuth();
 
-  const { data: jobs, isLoading: isLoadingJobs } = useQuery<Job[]>({
+  const { data: jobs, isLoading: isLoadingJobs } = useQuery({
     queryKey: ["/api/customer/jobs-by-email"],
     enabled: isAuthenticated,
     retry: false,
@@ -117,7 +116,7 @@ export default function QuickAccess() {
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {jobs.map((job) => (
+              {jobs.map((job: any) => (
                 <Card key={job.id} className="hover-elevate" data-testid={`card-job-${job.id}`}>
                   <CardHeader>
                     <div className="flex items-center justify-between mb-2">

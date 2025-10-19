@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +16,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Header } from "@/components/Header";
-import { Copy, Loader2, Filter, AlertCircle, Calendar, FileText } from "lucide-react";
+import { Copy, Loader2, Filter, AlertCircle, Calendar } from "lucide-react";
 import type { Job } from "@shared/schema";
 
 const serviceTypes = [
@@ -34,13 +33,12 @@ const serviceTypes = [
 
 export default function AdminPage() {
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
   const [password, setPassword] = useState("");
   const [generatedLinks, setGeneratedLinks] = useState<Record<string, string>>({});
   const [depositLinks, setDepositLinks] = useState<Record<string, string>>({});
   const [filters, setFilters] = useState({
-    status: "all",
-    serviceType: "all",
+    status: "",
+    serviceType: "",
     startDate: "",
     endDate: "",
     isUrgent: false,
@@ -190,8 +188,8 @@ export default function AdminPage() {
   };
 
   const filteredJobs = jobs?.filter((job) => {
-    if (filters.status && filters.status !== "all" && job.status !== filters.status) return false;
-    if (filters.serviceType && filters.serviceType !== "all" && job.serviceType !== filters.serviceType) return false;
+    if (filters.status && job.status !== filters.status) return false;
+    if (filters.serviceType && job.serviceType !== filters.serviceType) return false;
     if (filters.isUrgent && job.isUrgent !== "true") return false;
     if (filters.startDate && filters.endDate && job.appointmentDateTime) {
       const appointmentDate = new Date(job.appointmentDateTime);
@@ -292,7 +290,7 @@ export default function AdminPage() {
                       <SelectValue placeholder="All statuses" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All statuses</SelectItem>
+                      <SelectItem value="">All statuses</SelectItem>
                       <SelectItem value="requested">Requested</SelectItem>
                       <SelectItem value="accepted">Accepted</SelectItem>
                       <SelectItem value="deposit_due">Deposit Due</SelectItem>
@@ -313,7 +311,7 @@ export default function AdminPage() {
                       <SelectValue placeholder="All types" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All types</SelectItem>
+                      <SelectItem value="">All types</SelectItem>
                       {serviceTypes.map((type) => (
                         <SelectItem key={type} value={type}>
                           {type}
@@ -474,17 +472,6 @@ export default function AdminPage() {
                             <Copy className="h-4 w-4" />
                           </Button>
                         </div>
-                      )}
-
-                      {(job.status === "confirmed" || job.paymentStatus === "completed") && (
-                        <Button
-                          onClick={() => setLocation(`/contract/${job.id}`)}
-                          variant="outline"
-                          data-testid={`button-view-contract-${job.id}`}
-                        >
-                          <FileText className="h-4 w-4 mr-2" />
-                          View Contract
-                        </Button>
                       )}
                     </div>
                   </CardContent>

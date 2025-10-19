@@ -214,7 +214,7 @@ export default function ProviderDashboard() {
                           {...job}
                           status={job.status as any}
                           onAccept={() => handleAcceptJob(job.id)}
-                          onViewDetails={() => setLocation(`/job/${job.id}`)}
+                          onViewDetails={() => console.log("View details:", job.id)}
                           onMessage={handleMessage}
                         />
                       ))}
@@ -242,7 +242,7 @@ export default function ProviderDashboard() {
                           <JobCard
                             {...job}
                             status={job.status as any}
-                            onViewDetails={() => setLocation(`/job/${job.id}`)}
+                            onViewDetails={() => console.log("View details:", job.id)}
                             onMessage={handleMessage}
                           />
                           {job.status === "accepted" && (
@@ -289,7 +289,7 @@ export default function ProviderDashboard() {
                           key={job.id}
                           {...job}
                           status={job.status as any}
-                          onViewDetails={() => setLocation(`/job/${job.id}`)}
+                          onViewDetails={() => console.log("View details:", job.id)}
                           onMessage={handleMessage}
                         />
                       ))}

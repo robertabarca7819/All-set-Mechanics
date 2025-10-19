@@ -4,7 +4,6 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["curl"]
 
 [deployment]
 deploymentTarget = "autoscale"
@@ -14,9 +13,6 @@ run = ["npm", "run", "start"]
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 33915
 
 [[ports]]
 localPort = 34073
@@ -38,6 +34,10 @@ localPort = 41079
 localPort = 41845
 
 [[ports]]
+localPort = 42447
+externalPort = 3000
+
+[[ports]]
 localPort = 43049
 
 [[ports]]
@@ -54,9 +54,6 @@ localPort = 45309
 
 [[ports]]
 localPort = 45921
-
-[[ports]]
-localPort = 46775
 
 [env]
 PORT = "5000"
@@ -76,11 +73,6 @@ args = "Start application"
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-waitForPort = 5000
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"

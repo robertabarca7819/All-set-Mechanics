@@ -20,18 +20,24 @@ export function Footer() {
             <h3 className="font-semibold">Company</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/about" className="hover:text-primary transition-colors" data-testid="link-footer-about">
-                  About Us
+                <Link href="/about">
+                  <a className="hover:text-primary transition-colors" data-testid="link-footer-about">
+                    About Us
+                  </a>
                 </Link>
               </li>
               <li>
-                <Link href="/how-it-works" className="hover:text-primary transition-colors" data-testid="link-footer-how">
-                  How It Works
+                <Link href="/how-it-works">
+                  <a className="hover:text-primary transition-colors" data-testid="link-footer-how">
+                    How It Works
+                  </a>
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="hover:text-primary transition-colors" data-testid="link-footer-contact">
-                  Contact
+                <Link href="/contact">
+                  <a className="hover:text-primary transition-colors" data-testid="link-footer-contact">
+                    Contact
+                  </a>
                 </Link>
               </li>
             </ul>
@@ -41,18 +47,24 @@ export function Footer() {
             <h3 className="font-semibold">Support</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/help" className="hover:text-primary transition-colors" data-testid="link-footer-help">
-                  Help Center
+                <Link href="/help">
+                  <a className="hover:text-primary transition-colors" data-testid="link-footer-help">
+                    Help Center
+                  </a>
                 </Link>
               </li>
               <li>
-                <Link href="/faq" className="hover:text-primary transition-colors" data-testid="link-footer-faq">
-                  FAQ
+                <Link href="/faq">
+                  <a className="hover:text-primary transition-colors" data-testid="link-footer-faq">
+                    FAQ
+                  </a>
                 </Link>
               </li>
               <li>
-                <Link href="/safety" className="hover:text-primary transition-colors" data-testid="link-footer-safety">
-                  Safety Guidelines
+                <Link href="/safety">
+                  <a className="hover:text-primary transition-colors" data-testid="link-footer-safety">
+                    Safety Guidelines
+                  </a>
                 </Link>
               </li>
             </ul>
@@ -62,13 +74,17 @@ export function Footer() {
             <h3 className="font-semibold">Legal</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/privacy" className="hover:text-primary transition-colors" data-testid="link-footer-privacy">
-                  Privacy Policy
+                <Link href="/privacy">
+                  <a className="hover:text-primary transition-colors" data-testid="link-footer-privacy">
+                    Privacy Policy
+                  </a>
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="hover:text-primary transition-colors" data-testid="link-footer-terms">
-                  Terms of Service
+                <Link href="/terms">
+                  <a className="hover:text-primary transition-colors" data-testid="link-footer-terms">
+                    Terms of Service
+                  </a>
                 </Link>
               </li>
             </ul>

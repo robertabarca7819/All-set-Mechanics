@@ -24,7 +24,6 @@ export const insertUserSchema = createInsertSchema(users).pick({
   firstName: true,
   lastName: true,
   phoneNumber: true,
-  profileImageUrl: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
