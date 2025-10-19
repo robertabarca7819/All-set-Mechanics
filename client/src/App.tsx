@@ -9,6 +9,7 @@ import AdminPage from "@/pages/AdminPage";
 import AdminCalendar from "@/pages/AdminCalendar";
 import CustomerDashboard from "@/pages/CustomerDashboard";
 import ContractPage from "@/pages/ContractPage";
+import JobDetailsPage from "@/pages/JobDetailsPage";
 import ProviderDashboard from "@/pages/ProviderDashboard";
 import ProviderRegister from "@/pages/ProviderRegister";
 import ProviderLogin from "@/pages/ProviderLogin";
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/admin/calendar" component={AdminCalendar} />
       <Route path="/my-jobs" component={CustomerDashboard} />
       <Route path="/contract/:jobId" component={ContractPage} />
+      <Route path="/job/:jobId" component={JobDetailsPage} />
       <Route path="/provider-register" component={ProviderRegister} />
       <Route path="/provider-login" component={ProviderLogin} />
       <Route path="/customer-register" component={CustomerRegister} />

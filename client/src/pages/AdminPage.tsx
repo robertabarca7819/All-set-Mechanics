@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +17,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Header } from "@/components/Header";
-import { Copy, Loader2, Filter, AlertCircle, Calendar } from "lucide-react";
+import { Copy, Loader2, Filter, AlertCircle, Calendar, FileText } from "lucide-react";
 import type { Job } from "@shared/schema";
 
 const serviceTypes = [
@@ -33,6 +34,7 @@ const serviceTypes = [
 
 export default function AdminPage() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [password, setPassword] = useState("");
   const [generatedLinks, setGeneratedLinks] = useState<Record<string, string>>({});
   const [depositLinks, setDepositLinks] = useState<Record<string, string>>({});
@@ -472,6 +474,17 @@ export default function AdminPage() {
                             <Copy className="h-4 w-4" />
                           </Button>
                         </div>
+                      )}
+
+                      {(job.status === "confirmed" || job.paymentStatus === "completed") && (
+                        <Button
+                          onClick={() => setLocation(`/contract/${job.id}`)}
+                          variant="outline"
+                          data-testid={`button-view-contract-${job.id}`}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          View Contract
+                        </Button>
                       )}
                     </div>
                   </CardContent>
