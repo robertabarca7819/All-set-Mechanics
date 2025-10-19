@@ -593,7 +593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contractTerms: z.string().optional(),
         customerSignature: z.string().optional(),
         providerSignature: z.string().optional(),
-        signedAt: z.date().optional(),
+        signedAt: z.string().optional(),
         paymentStatus: z.string().optional(),
         checkoutSessionId: z.string().optional(),
         paymentLinkToken: z.string().optional(),
@@ -610,6 +610,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (parsedUpdates.appointmentDateTime) {
         updateData.appointmentDateTime = new Date(parsedUpdates.appointmentDateTime);
+      }
+      if (parsedUpdates.signedAt) {
+        updateData.signedAt = new Date(parsedUpdates.signedAt);
       }
       
       const updatedJob = await storage.updateJob(id, updateData);
