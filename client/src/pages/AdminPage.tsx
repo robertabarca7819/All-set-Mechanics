@@ -39,8 +39,8 @@ export default function AdminPage() {
   const [generatedLinks, setGeneratedLinks] = useState<Record<string, string>>({});
   const [depositLinks, setDepositLinks] = useState<Record<string, string>>({});
   const [filters, setFilters] = useState({
-    status: "",
-    serviceType: "",
+    status: "all",
+    serviceType: "all",
     startDate: "",
     endDate: "",
     isUrgent: false,
@@ -190,8 +190,8 @@ export default function AdminPage() {
   };
 
   const filteredJobs = jobs?.filter((job) => {
-    if (filters.status && job.status !== filters.status) return false;
-    if (filters.serviceType && job.serviceType !== filters.serviceType) return false;
+    if (filters.status && filters.status !== "all" && job.status !== filters.status) return false;
+    if (filters.serviceType && filters.serviceType !== "all" && job.serviceType !== filters.serviceType) return false;
     if (filters.isUrgent && job.isUrgent !== "true") return false;
     if (filters.startDate && filters.endDate && job.appointmentDateTime) {
       const appointmentDate = new Date(job.appointmentDateTime);
@@ -292,7 +292,7 @@ export default function AdminPage() {
                       <SelectValue placeholder="All statuses" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All statuses</SelectItem>
+                      <SelectItem value="all">All statuses</SelectItem>
                       <SelectItem value="requested">Requested</SelectItem>
                       <SelectItem value="accepted">Accepted</SelectItem>
                       <SelectItem value="deposit_due">Deposit Due</SelectItem>
@@ -313,7 +313,7 @@ export default function AdminPage() {
                       <SelectValue placeholder="All types" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All types</SelectItem>
+                      <SelectItem value="all">All types</SelectItem>
                       {serviceTypes.map((type) => (
                         <SelectItem key={type} value={type}>
                           {type}
