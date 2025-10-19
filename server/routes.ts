@@ -15,74 +15,74 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 async function adminAuthMiddleware(req: Request, res: Response, next: NextFunction) {
   const token = req.cookies?.adminToken;
-  
+
   if (!token) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-  
+
   const session = await storage.getAdminSessionByToken(token);
-  
+
   if (!session) {
     res.clearCookie("adminToken");
     return res.status(401).json({ error: "Unauthorized" });
   }
-  
+
   // Check if session has expired
   if (new Date() > new Date(session.expiresAt)) {
     await storage.deleteAdminSession(session.id);
     res.clearCookie("adminToken");
     return res.status(401).json({ error: "Session expired" });
   }
-  
+
   next();
 }
 
 async function providerAuthMiddleware(req: Request, res: Response, next: NextFunction) {
   const token = req.cookies?.providerToken;
-  
+
   if (!token) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-  
+
   const session = await storage.getProviderSessionByToken(token);
-  
+
   if (!session) {
     res.clearCookie("providerToken");
     return res.status(401).json({ error: "Unauthorized" });
   }
-  
+
   // Check if session has expired
   if (new Date() > new Date(session.expiresAt)) {
     await storage.deleteProviderSession(session.id);
     res.clearCookie("providerToken");
     return res.status(401).json({ error: "Session expired" });
   }
-  
+
   (req as any).providerId = session.providerId;
   next();
 }
 
 async function customerAuthMiddleware(req: Request, res: Response, next: NextFunction) {
   const token = req.cookies?.customerToken;
-  
+
   if (!token) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-  
+
   const session = await storage.getCustomerSessionByToken(token);
-  
+
   if (!session) {
     res.clearCookie("customerToken");
     return res.status(401).json({ error: "Unauthorized" });
   }
-  
+
   // Check if session has expired
   if (new Date() > new Date(session.expiresAt)) {
     await storage.deleteCustomerSession(session.id);
     res.clearCookie("customerToken");
     return res.status(401).json({ error: "Session expired" });
   }
-  
+
   (req as any).customerId = session.customerId;
   next();
 }
@@ -90,7 +90,7 @@ async function customerAuthMiddleware(req: Request, res: Response, next: NextFun
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth (OpenID Connect) for customer quick access
   await setupAuth(app);
-  
+
   // Admin authentication endpoints
   app.post("/api/admin/login", async (req, res) => {
     try {
@@ -150,25 +150,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/verify", async (req, res) => {
     try {
       const token = req.cookies?.adminToken;
-      
+
       if (!token) {
         return res.json({ authenticated: false });
       }
-      
+
       const session = await storage.getAdminSessionByToken(token);
-      
+
       if (!session) {
         res.clearCookie("adminToken");
         return res.json({ authenticated: false });
       }
-      
+
       // Check if session has expired
       if (new Date() > new Date(session.expiresAt)) {
         await storage.deleteAdminSession(session.id);
         res.clearCookie("adminToken");
         return res.json({ authenticated: false });
       }
-      
+
       res.json({ authenticated: true });
     } catch (error) {
       res.status(500).json({ error: "Verification failed" });
@@ -299,18 +299,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/provider/verify", async (req, res) => {
     try {
       const token = req.cookies?.providerToken;
-      
+
       if (!token) {
         return res.json({ authenticated: false });
       }
-      
+
       const session = await storage.getProviderSessionByToken(token);
-      
+
       if (!session) {
         res.clearCookie("providerToken");
         return res.json({ authenticated: false });
       }
-      
+
       if (new Date() > new Date(session.expiresAt)) {
         await storage.deleteProviderSession(session.id);
         res.clearCookie("providerToken");
@@ -318,7 +318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const user = await storage.getUser(session.providerId);
-      
+
       res.json({ 
         authenticated: true,
         user: user ? { id: user.id, username: user.username, role: user.role } : null
@@ -438,18 +438,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/customer/verify", async (req, res) => {
     try {
       const token = req.cookies?.customerToken;
-      
+
       if (!token) {
         return res.json({ authenticated: false });
       }
-      
+
       const session = await storage.getCustomerSessionByToken(token);
-      
+
       if (!session) {
         res.clearCookie("customerToken");
         return res.json({ authenticated: false });
       }
-      
+
       if (new Date() > new Date(session.expiresAt)) {
         await storage.deleteCustomerSession(session.id);
         res.clearCookie("customerToken");
@@ -457,7 +457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const user = await storage.getUser(session.customerId);
-      
+
       res.json({ 
         authenticated: true,
         user: user ? { id: user.id, username: user.username, role: user.role } : null
@@ -474,7 +474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "userId is required" });
       }
       const conversations = await storage.getConversationsByUserId(userId);
-      
+
       const conversationsWithJobsAndMessages = await Promise.all(
         conversations.map(async (conv) => {
           const job = await storage.getJob(conv.jobId);
@@ -482,7 +482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return { ...conv, job, lastMessage: lastMessage?.content };
         })
       );
-      
+
       res.json(conversationsWithJobsAndMessages);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch conversations" });
@@ -523,7 +523,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertMessageSchema.parse(req.body);
       const message = await storage.createMessage(validatedData);
-      
+
       const conversation = await storage.getConversation(message.conversationId);
       if (conversation) {
         const job = await storage.getJob(conversation.jobId);
@@ -533,7 +533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversationId: conversation.id,
           jobTitle: job?.title,
         };
-        
+
         [conversation.customerId, conversation.providerId].forEach(userId => {
           const client = wsClients.get(userId);
           if (client && client.readyState === WebSocket.OPEN) {
@@ -541,7 +541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
       }
-      
+
       res.json(message);
     } catch (error) {
       res.status(400).json({ error: "Invalid message data" });
@@ -603,7 +603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         appointmentDateTime: z.string().optional(),
       });
       const parsedUpdates = updateSchema.parse(req.body);
-      
+
       const updateData: any = { ...parsedUpdates };
       if (parsedUpdates.responseDeadline) {
         updateData.responseDeadline = new Date(parsedUpdates.responseDeadline);
@@ -611,7 +611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (parsedUpdates.appointmentDateTime) {
         updateData.appointmentDateTime = new Date(parsedUpdates.appointmentDateTime);
       }
-      
+
       const updatedJob = await storage.updateJob(id, updateData);
       if (!updatedJob) {
         return res.status(404).json({ error: "Job not found" });
@@ -792,7 +792,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       let subtotal = job.estimatedPrice;
-      
+
       if (job.depositStatus === "paid" && job.depositAmount) {
         subtotal = subtotal - job.depositAmount;
       }
@@ -837,11 +837,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentLinkToken,
       });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid request data", details: error.errors });
-      }
       console.error("Checkout session creation error:", error);
-      res.status(500).json({ error: "Failed to create checkout session" });
+      if (error instanceof Error && error.message.includes('Invalid API Key')) {
+        return res.status(500).json({ 
+          error: "Stripe is not properly configured. Please set STRIPE_SECRET_KEY and VITE_STRIPE_PUBLIC_KEY in Secrets." 
+        });
+      }
+      return res.status(500).json({ error: "Failed to create checkout session" });
     }
   });
 
@@ -972,14 +974,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { email, code } = schema.parse(req.body);
 
       const verificationCode = await storage.getVerificationCodeByEmail(email);
-      
+
       if (!verificationCode || verificationCode.code !== code) {
         return res.status(401).json({ error: "Invalid or expired verification code" });
       }
 
       const accessToken = randomBytes(32).toString("hex");
       const jobs = await storage.getJobsByCustomerEmail(email);
-      
+
       for (const job of jobs) {
         await storage.updateJob(job.id, { customerAccessToken: accessToken });
       }
@@ -1002,19 +1004,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/customer/jobs", async (req, res) => {
     try {
       const accessToken = req.query.token as string;
-      
+
       if (!accessToken) {
         return res.status(400).json({ error: "Access token is required" });
       }
 
       const job = await storage.getJobByCustomerAccessToken(accessToken);
-      
+
       if (!job) {
         return res.status(404).json({ error: "No jobs found for this access token" });
       }
 
       const jobs = await storage.getJobsByCustomerEmail(job.customerEmail!);
-      
+
       res.json(jobs);
     } catch (error) {
       console.error("Get customer jobs error:", error);
@@ -1102,13 +1104,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { token } = req.params;
       const job = await storage.getJobByPaymentLinkToken(token);
-      
+
       if (!job || !job.checkoutSessionId) {
         return res.status(404).send("Payment link not found or expired");
       }
 
       const session = await stripe.checkout.sessions.retrieve(job.checkoutSessionId);
-      
+
       if (session.url) {
         return res.redirect(303, session.url);
       }
@@ -1156,7 +1158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const newDate = session.metadata?.newDate;
           const newTime = session.metadata?.newTime;
           const job = await storage.getJob(jobId);
-          
+
           if (job && newDate && newTime) {
             const newAppointmentDateTime = new Date(`${newDate}T${newTime}:00Z`);
             await storage.updateJob(jobId, {
@@ -1189,23 +1191,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
 
+  // This part of the code connects to the WebSocket server.
+  // It listens for incoming WebSocket connections on the '/ws' path.
+  // When a client connects, it extracts the 'userId' from the URL parameters.
+  // If 'userId' is present, it stores the WebSocket client in the 'wsClients' map,
+  // associating it with the 'userId'. It also logs that a client has connected.
+  // When a client disconnects, it removes the client from the 'wsClients' map and logs the disconnection.
+  // If any WebSocket error occurs, it logs the error.
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
   wss.on("connection", (ws, req) => {
+    // Extract userId from the query parameters of the WebSocket request URL.
+    // The URL is parsed to get search parameters.
     const userId = new URL(req.url!, `http://${req.headers.host}`).searchParams.get("userId");
-    
+
     if (userId) {
+      // If userId is found, associate the WebSocket client with this userId in the wsClients map.
       wsClients.set(userId, ws);
       console.log(`WebSocket client connected: ${userId}`);
     }
 
+    // Event handler for when the WebSocket connection is closed.
     ws.on("close", () => {
       if (userId) {
+        // Remove the client from the map and log the disconnection.
         wsClients.delete(userId);
         console.log(`WebSocket client disconnected: ${userId}`);
       }
     });
 
+    // Event handler for WebSocket errors.
     ws.on("error", (error) => {
       console.error("WebSocket error:", error);
     });
