@@ -198,9 +198,7 @@ export const sessions = pgTable("sessions", {
   expire: timestamp("expire", { precision: 6 }).notNull(),
 });
 
-export const insertSessionSchema = createInsertSchema(sessions).omit({
-  id: true,
-});
+export const insertSessionSchema = createInsertSchema(sessions);
 
 export type InsertSession = z.infer<typeof insertSessionSchema>;
 export type Session = typeof sessions.$inferSelect;
