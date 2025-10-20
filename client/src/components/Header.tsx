@@ -10,15 +10,15 @@ export function Header() {
 
   const NavLinks = () => (
     <>
-      <Link href="/request" className="w-full">
-        <Button variant="ghost" className="w-full justify-start" data-testid="button-nav-request">Request Service</Button>
-      </Link>
-      <Link href="/provider-register" className="w-full">
-        <Button variant="ghost" className="w-full justify-start" data-testid="button-nav-provider-register">Become a Mechanic</Button>
-      </Link>
-      <Link href="/quick-access" className="w-full">
-        <Button className="w-full" data-testid="button-nav-quick-access">Quick Access</Button>
-      </Link>
+      <Button variant="ghost" className="w-full justify-start" asChild data-testid="button-nav-request">
+        <Link href="/request">Request Service</Link>
+      </Button>
+      <Button variant="ghost" className="w-full justify-start" asChild data-testid="button-nav-provider-register">
+        <Link href="/provider-register">Become a Mechanic</Link>
+      </Button>
+      <Button className="w-full" asChild data-testid="button-nav-quick-access">
+        <Link href="/quick-access">Quick Access</Link>
+      </Button>
     </>
   );
 

@@ -2,6 +2,14 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Clock, DollarSign, MessageSquare, Calendar } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export type JobStatus = "requested" | "accepted" | "payment_pending" | "confirmed" | "completed";
 
@@ -136,6 +144,21 @@ export function JobCard({
             <Button size="sm" onClick={onAccept} data-testid="button-accept-job">
               Accept Job
             </Button>
+          )}
+          {status === "payment_pending" && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="sm">Make Payment</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Complete Payment</DialogTitle>
+                  <DialogDescription>
+                    Complete payment for this service
+                  </DialogDescription>
+                </DialogHeader>
+              </DialogContent>
+            </Dialog>
           )}
         </div>
       </CardFooter>
