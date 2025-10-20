@@ -191,12 +191,11 @@ export const insertCustomerVerificationCodeSchema = createInsertSchema(customerV
 export type InsertCustomerVerificationCode = z.infer<typeof insertCustomerVerificationCodeSchema>;
 export type CustomerVerificationCode = typeof customerVerificationCodes.$inferSelect;
 
-// Sessions table for Replit Auth (OpenID Connect)
+// Sessions table for express-session with connect-pg-simple
 export const sessions = pgTable("sessions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  sid: text("sid").notNull().unique(),
+  sid: varchar("sid").primaryKey(),
   sess: text("sess").notNull(),
-  expire: timestamp("expire").notNull(),
+  expire: timestamp("expire", { precision: 6 }).notNull(),
 });
 
 export const insertSessionSchema = createInsertSchema(sessions).omit({
