@@ -15,8 +15,8 @@ export function Footer() {
           <div>
             <h4 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Quick Links</h4>
             <ul className="space-y-2 text-xs sm:text-sm">
-              <li><Link href="/request"><a className="text-muted-foreground hover:text-foreground">Request Service</a></Link></li>
-              <li><Link href="/provider-register"><a className="text-muted-foreground hover:text-foreground">Become a Mechanic</a></Link></li>
+              <li><Link href="/request" className="text-muted-foreground hover:text-foreground">Request Service</Link></li>
+              <li><Link href="/provider-register" className="text-muted-foreground hover:text-foreground">Become a Mechanic</Link></li>
             </ul>
           </div>
           <div>

@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
+import { Menu, Wrench } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export function Header() {
@@ -10,14 +10,14 @@ export function Header() {
 
   const NavLinks = () => (
     <>
-      <Link href="/request">
-        <a className="w-full"><Button variant="ghost" className="w-full justify-start">Request Service</Button></a>
+      <Link href="/request" className="w-full">
+        <Button variant="ghost" className="w-full justify-start" data-testid="button-nav-request">Request Service</Button>
       </Link>
-      <Link href="/provider-register">
-        <a className="w-full"><Button variant="ghost" className="w-full justify-start">Become a Mechanic</Button></a>
+      <Link href="/provider-register" className="w-full">
+        <Button variant="ghost" className="w-full justify-start" data-testid="button-nav-provider-register">Become a Mechanic</Button>
       </Link>
-      <Link href="/quick-access">
-        <a className="w-full"><Button className="w-full">Quick Access</Button></a>
+      <Link href="/quick-access" className="w-full">
+        <Button className="w-full" data-testid="button-nav-quick-access">Quick Access</Button>
       </Link>
     </>
   );
@@ -25,11 +25,9 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 sm:h-16 items-center justify-between px-4">
-        <Link href="/">
-          <a className="flex items-center gap-2 hover-elevate active-elevate-2 rounded-md px-3 py-2" data-testid="link-home">
-            <Wrench className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">All-Set Mechanics</span>
-          </a>
+        <Link href="/" className="flex items-center gap-2 hover-elevate active-elevate-2 rounded-md px-3 py-2" data-testid="link-home">
+          <Wrench className="h-6 w-6 text-primary" />
+          <span className="text-xl font-bold">All-Set Mechanics</span>
         </Link>
 
         {isMobile ? (
@@ -50,30 +48,20 @@ export function Header() {
           </div>
         ) : (
           <nav className="hidden md:flex items-center gap-6">
-            <Link href="/">
-              <a className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-home">
-                Home
-              </a>
+            <Link href="/" className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-home">
+              Home
             </Link>
-            <Link href="/customer-register">
-              <a className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-customer-register">
-                Customer Sign Up
-              </a>
+            <Link href="/customer-register" className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-customer-register">
+              Customer Sign Up
             </Link>
-            <Link href="/customer-login">
-              <a className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-customer-login">
-                Customer Login
-              </a>
+            <Link href="/customer-login" className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-customer-login">
+              Customer Login
             </Link>
-            <Link href="/provider-register">
-              <a className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-provider-register">
-                Mechanic Sign Up
-              </a>
+            <Link href="/provider-register" className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-provider-register">
+              Mechanic Sign Up
             </Link>
-            <Link href="/provider-login">
-              <a className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-provider-login">
-                Mechanic Login
-              </a>
+            <Link href="/provider-login" className="text-sm font-medium hover:text-primary transition-colors" data-testid="link-nav-provider-login">
+              Mechanic Login
             </Link>
           </nav>
         )}

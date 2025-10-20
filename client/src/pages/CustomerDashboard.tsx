@@ -11,7 +11,7 @@ import { Header } from "@/components/Header";
 import { Calendar, Clock, MapPin, AlertCircle, Loader2 } from "lucide-react";
 import type { Job } from "@shared/schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import Link from "next/link";
+import { Link } from "wouter";
 
 export default function CustomerDashboard() {
   const { toast } = useToast();
@@ -337,8 +337,8 @@ export default function CustomerDashboard() {
       <div className="container py-4 sm:py-6 lg:py-8 px-4">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold">My Jobs</h1>
-          <Link href="/request">
-            <a className="w-full sm:w-auto"><Button className="w-full sm:w-auto">Request New Service</Button></a>
+          <Link href="/request" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto" data-testid="button-request-new-service">Request New Service</Button>
           </Link>
         </div>
 
