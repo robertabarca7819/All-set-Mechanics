@@ -1228,3 +1228,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   return httpServer;
 }
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
