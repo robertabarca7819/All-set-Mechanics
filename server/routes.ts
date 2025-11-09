@@ -11,7 +11,40 @@ import { insertConversationSchema, insertMessageSchema, insertJobSchema } from "
 import { setupAuth, isAuthenticated, getUserIdFromClaims } from "./replitAuth";
 
 const wsClients = new Map<string, WebSocket>();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const isProduction = process.env.NODE_ENV === "production";
+let stripe: Stripe | null = null;
+
+if (!stripeSecretKey) {
+  console.warn(
+    "STRIPE_SECRET_KEY is not set. Stripe-powered features will be disabled until it is configured.",
+  );
+} else {
+  if (!isProduction && !stripeSecretKey.startsWith("sk_test_")) {
+    console.warn(
+      "STRIPE_SECRET_KEY does not start with 'sk_test_'. Make sure you are using a test key in development.",
+    );
+  }
+
+  try {
+    stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-06-20" });
+  } catch (error) {
+    console.error("Failed to initialize Stripe client:", error);
+  }
+}
+
+function getStripeClient(res: Response): Stripe | null {
+  if (!stripe) {
+    res.status(500).json({
+      error:
+        "Stripe is not properly configured. Please set STRIPE_SECRET_KEY and VITE_STRIPE_PUBLIC_KEY in Secrets.",
+    });
+    return null;
+  }
+
+  return stripe;
+}
 
 async function adminAuthMiddleware(req: Request, res: Response, next: NextFunction) {
   const token = req.cookies?.adminToken;
@@ -734,7 +767,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const depositAmount = job.depositAmount || 100;
       const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
 
-      const session = await stripe.checkout.sessions.create({
+      const stripeClient = getStripeClient(res);
+      if (!stripeClient) {
+        return;
+      }
+
+      const session = await stripeClient.checkout.sessions.create({
         payment_method_types: ["card"],
         line_items: [
           {
@@ -802,7 +840,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
 
-      const session = await stripe.checkout.sessions.create({
+      const stripeClient = getStripeClient(res);
+      if (!stripeClient) {
+        return;
+      }
+
+      const session = await stripeClient.checkout.sessions.create({
         payment_method_types: ["card"],
         line_items: [
           {
@@ -890,7 +933,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } else {
         const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
-        const session = await stripe.checkout.sessions.create({
+        const stripeClient = getStripeClient(res);
+        if (!stripeClient) {
+          return;
+        }
+
+        const session = await stripeClient.checkout.sessions.create({
           payment_method_types: ["card"],
           line_items: [
             {
@@ -1060,8 +1108,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "Appointment cancelled successfully",
         });
       } else {
+        const stripeClient = getStripeClient(res);
+        if (!stripeClient) {
+          return;
+        }
+
         const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
-        const session = await stripe.checkout.sessions.create({
+        const session = await stripeClient.checkout.sessions.create({
           payment_method_types: ["card"],
           line_items: [
             {
@@ -1109,7 +1162,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).send("Payment link not found or expired");
       }
 
-      const session = await stripe.checkout.sessions.retrieve(job.checkoutSessionId);
+      const stripeClient = getStripeClient(res);
+      if (!stripeClient) {
+        return;
+      }
+
+      const session = await stripeClient.checkout.sessions.retrieve(job.checkoutSessionId);
 
       if (session.url) {
         return res.redirect(303, session.url);
@@ -1131,8 +1189,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     let event;
 
+    const stripeClient = getStripeClient(res);
+    if (!stripeClient) {
+      return;
+    }
+
     try {
-      event = stripe.webhooks.constructEvent(
+      event = stripeClient.webhooks.constructEvent(
         req.body,
         sig,
         process.env.STRIPE_WEBHOOK_SECRET!
