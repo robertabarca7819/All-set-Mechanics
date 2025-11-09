@@ -8,8 +8,24 @@ import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { createHash } from "crypto";
 
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+const hasReplitAuthConfig = Boolean(
+  process.env.REPLIT_DOMAINS &&
+  process.env.REPL_ID &&
+  process.env.SESSION_SECRET,
+);
+
+if (!hasReplitAuthConfig) {
+  console.warn(
+    "Replit Auth environment variables are not fully configured. Authenticated routes will be disabled in development.",
+  );
+}
+
+const sessionSecret = process.env.SESSION_SECRET ?? "insecure-development-secret";
+
+if (!process.env.SESSION_SECRET) {
+  console.warn(
+    "SESSION_SECRET is not set. Falling back to an insecure development secret. Configure SESSION_SECRET for production use.",
+  );
 }
 
 const getOidcConfig = memoize(
@@ -24,6 +40,19 @@ const getOidcConfig = memoize(
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  if (!process.env.DATABASE_URL) {
+    return session({
+      secret: sessionSecret,
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: false,
+        maxAge: sessionTtl,
+      },
+    });
+  }
+
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
@@ -32,7 +61,7 @@ export function getSession() {
     tableName: "sessions",
   });
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret: sessionSecret,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
@@ -85,6 +114,10 @@ async function upsertUser(claims: any) {
 }
 
 export async function setupAuth(app: Express) {
+  if (!hasReplitAuthConfig) {
+    return;
+  }
+
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
@@ -145,6 +178,10 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  if (!hasReplitAuthConfig) {
+    return next();
+  }
+
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {

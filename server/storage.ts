@@ -1,6 +1,6 @@
 import { type User, type InsertUser, type Job, type InsertJob, type Conversation, type InsertConversation, type Message, type InsertMessage, type AdminSession, type InsertAdminSession, type ProviderSession, type InsertProviderSession, type CustomerSession, type InsertCustomerSession, type CustomerVerificationCode, type InsertCustomerVerificationCode, users, jobs, conversations, messages, adminSessions, providerSessions, customerSessions, customerVerificationCodes } from "@shared/schema";
 import { randomUUID } from "crypto";
-import { db } from "./db";
+import { db, hasDatabaseConnection } from "./db";
 import { eq, and, or, desc, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
@@ -621,23 +621,24 @@ export class MemStorage implements IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  constructor(private readonly db: NonNullable<typeof db>) {}
   async getUser(id: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
     return result[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    const result = await this.db.select().from(users).where(eq(users.username, username)).limit(1);
     return result[0];
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const result = await db.insert(users).values(user).returning();
+    const result = await this.db.insert(users).values(user).returning();
     return result[0];
   }
 
   async upsertUser(user: Partial<InsertUser> & { id: string }): Promise<User> {
-    const result = await db
+    const result = await this.db
       .insert(users)
       .values({
         ...user,
@@ -659,31 +660,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createJob(job: InsertJob): Promise<Job> {
-    const result = await db.insert(jobs).values(job).returning();
+    const result = await this.db.insert(jobs).values(job).returning();
     return result[0];
   }
 
   async getJob(id: string): Promise<Job | undefined> {
-    const result = await db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
+    const result = await this.db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
     return result[0];
   }
 
   async getJobByPaymentLinkToken(token: string): Promise<Job | undefined> {
-    const result = await db.select().from(jobs).where(eq(jobs.paymentLinkToken, token)).limit(1);
+    const result = await this.db.select().from(jobs).where(eq(jobs.paymentLinkToken, token)).limit(1);
     return result[0];
   }
 
   async getJobByCustomerAccessToken(token: string): Promise<Job | undefined> {
-    const result = await db.select().from(jobs).where(eq(jobs.customerAccessToken, token)).limit(1);
+    const result = await this.db.select().from(jobs).where(eq(jobs.customerAccessToken, token)).limit(1);
     return result[0];
   }
 
   async getAllJobs(): Promise<Job[]> {
-    return await db.select().from(jobs);
+    return await this.db.select().from(jobs);
   }
 
   async getJobsByCustomerEmail(email: string): Promise<Job[]> {
-    return await db.select().from(jobs).where(eq(jobs.customerEmail, email));
+    return await this.db.select().from(jobs).where(eq(jobs.customerEmail, email));
   }
 
   async getJobsFiltered(filters: {
@@ -719,34 +720,34 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (conditions.length > 0) {
-      return await db.select().from(jobs).where(and(...conditions));
+      return await this.db.select().from(jobs).where(and(...conditions));
     }
 
-    return await db.select().from(jobs);
+    return await this.db.select().from(jobs);
   }
 
   async updateJob(id: string, updates: Partial<Job>): Promise<Job | undefined> {
-    const result = await db.update(jobs).set(updates).where(eq(jobs.id, id)).returning();
+    const result = await this.db.update(jobs).set(updates).where(eq(jobs.id, id)).returning();
     return result[0];
   }
 
   async createConversation(conversation: InsertConversation): Promise<Conversation> {
-    const result = await db.insert(conversations).values(conversation).returning();
+    const result = await this.db.insert(conversations).values(conversation).returning();
     return result[0];
   }
 
   async getConversation(id: string): Promise<Conversation | undefined> {
-    const result = await db.select().from(conversations).where(eq(conversations.id, id)).limit(1);
+    const result = await this.db.select().from(conversations).where(eq(conversations.id, id)).limit(1);
     return result[0];
   }
 
   async getConversationByJobId(jobId: string): Promise<Conversation | undefined> {
-    const result = await db.select().from(conversations).where(eq(conversations.jobId, jobId)).limit(1);
+    const result = await this.db.select().from(conversations).where(eq(conversations.jobId, jobId)).limit(1);
     return result[0];
   }
 
   async getConversationsByUserId(userId: string): Promise<Conversation[]> {
-    return await db.select().from(conversations).where(
+    return await this.db.select().from(conversations).where(
       or(
         eq(conversations.customerId, userId),
         eq(conversations.providerId, userId)
@@ -755,18 +756,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
-    const result = await db.insert(messages).values(message).returning();
+    const result = await this.db.insert(messages).values(message).returning();
     return result[0];
   }
 
   async getMessagesByConversationId(conversationId: string): Promise<Message[]> {
-    return await db.select().from(messages)
+    return await this.db.select().from(messages)
       .where(eq(messages.conversationId, conversationId))
       .orderBy(messages.createdAt);
   }
 
   async getLastMessageByConversationId(conversationId: string): Promise<Message | undefined> {
-    const result = await db.select().from(messages)
+    const result = await this.db.select().from(messages)
       .where(eq(messages.conversationId, conversationId))
       .orderBy(desc(messages.createdAt))
       .limit(1);
@@ -774,12 +775,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAdminSession(session: InsertAdminSession): Promise<AdminSession> {
-    const result = await db.insert(adminSessions).values(session).returning();
+    const result = await this.db.insert(adminSessions).values(session).returning();
     return result[0];
   }
 
   async getAdminSessionByToken(token: string): Promise<AdminSession | undefined> {
-    const result = await db.select().from(adminSessions)
+    const result = await this.db.select().from(adminSessions)
       .where(
         and(
           eq(adminSessions.token, token),
@@ -791,16 +792,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteAdminSession(token: string): Promise<void> {
-    await db.delete(adminSessions).where(eq(adminSessions.token, token));
+    await this.db.delete(adminSessions).where(eq(adminSessions.token, token));
   }
 
   async createProviderSession(session: InsertProviderSession): Promise<ProviderSession> {
-    const result = await db.insert(providerSessions).values(session).returning();
+    const result = await this.db.insert(providerSessions).values(session).returning();
     return result[0];
   }
 
   async getProviderSessionByToken(token: string): Promise<ProviderSession | undefined> {
-    const result = await db.select().from(providerSessions)
+    const result = await this.db.select().from(providerSessions)
       .where(
         and(
           eq(providerSessions.token, token),
@@ -812,16 +813,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProviderSession(id: string): Promise<void> {
-    await db.delete(providerSessions).where(eq(providerSessions.id, id));
+    await this.db.delete(providerSessions).where(eq(providerSessions.id, id));
   }
 
   async createCustomerSession(session: InsertCustomerSession): Promise<CustomerSession> {
-    const result = await db.insert(customerSessions).values(session).returning();
+    const result = await this.db.insert(customerSessions).values(session).returning();
     return result[0];
   }
 
   async getCustomerSessionByToken(token: string): Promise<CustomerSession | undefined> {
-    const result = await db.select().from(customerSessions)
+    const result = await this.db.select().from(customerSessions)
       .where(
         and(
           eq(customerSessions.token, token),
@@ -833,16 +834,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteCustomerSession(id: string): Promise<void> {
-    await db.delete(customerSessions).where(eq(customerSessions.id, id));
+    await this.db.delete(customerSessions).where(eq(customerSessions.id, id));
   }
 
   async createVerificationCode(code: InsertCustomerVerificationCode): Promise<CustomerVerificationCode> {
-    const result = await db.insert(customerVerificationCodes).values(code).returning();
+    const result = await this.db.insert(customerVerificationCodes).values(code).returning();
     return result[0];
   }
 
   async getVerificationCodeByEmail(email: string): Promise<CustomerVerificationCode | undefined> {
-    const result = await db.select().from(customerVerificationCodes)
+    const result = await this.db.select().from(customerVerificationCodes)
       .where(
         and(
           eq(customerVerificationCodes.email, email),
@@ -855,12 +856,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteVerificationCode(id: string): Promise<void> {
-    await db.delete(customerVerificationCodes).where(eq(customerVerificationCodes.id, id));
+    await this.db.delete(customerVerificationCodes).where(eq(customerVerificationCodes.id, id));
   }
 
   async checkInMechanic(jobId: string): Promise<Job | undefined> {
     const now = new Date();
-    const result = await db.update(jobs)
+    const result = await this.db.update(jobs)
       .set({ 
         mechanicCheckedInAt: now,
         actualStartTime: now,
@@ -879,7 +880,7 @@ export class DatabaseStorage implements IStorage {
     if (jobNotes) {
       updates.jobNotes = jobNotes;
     }
-    const result = await db.update(jobs)
+    const result = await this.db.update(jobs)
       .set(updates)
       .where(eq(jobs.id, jobId))
       .returning();
@@ -887,5 +888,12 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Use DatabaseStorage instead of MemStorage for PostgreSQL
-export const storage = new DatabaseStorage();
+let storageImplementation: IStorage;
+
+if (hasDatabaseConnection() && db) {
+  storageImplementation = new DatabaseStorage(db);
+} else {
+  storageImplementation = new MemStorage();
+}
+
+export const storage = storageImplementation;
