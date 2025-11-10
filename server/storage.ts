@@ -8,6 +8,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   upsertUser(user: Partial<InsertUser> & { id: string }): Promise<User>;
+  updateUserPassword(id: string, password: string): Promise<void>;
   
   createJob(job: InsertJob): Promise<Job>;
   getJob(id: string): Promise<Job | undefined>;
@@ -310,6 +311,15 @@ export class MemStorage implements IStorage {
       this.users.set(user.id, newUser);
       return newUser;
     }
+  }
+
+  async updateUserPassword(id: string, password: string): Promise<void> {
+    const existing = this.users.get(id);
+    if (!existing) {
+      return;
+    }
+
+    this.users.set(id, { ...existing, password });
   }
 
   async createJob(insertJob: InsertJob): Promise<Job> {
@@ -653,10 +663,15 @@ export class DatabaseStorage implements IStorage {
           lastName: user.lastName,
           phoneNumber: user.phoneNumber,
           profileImageUrl: user.profileImageUrl,
+          ...(user.password ? { password: user.password } : {}),
         },
       })
       .returning();
     return result[0];
+  }
+
+  async updateUserPassword(id: string, password: string): Promise<void> {
+    await this.db.update(users).set({ password }).where(eq(users.id, id));
   }
 
   async createJob(job: InsertJob): Promise<Job> {
