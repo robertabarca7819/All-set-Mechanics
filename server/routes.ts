@@ -229,9 +229,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const randomNum = Math.floor(1000 + Math.random() * 9000);
       const employeeId = `EMP-${timestamp}-${randomNum}`;
 
+      const hashedPassword = await bcrypt.hash(password, 10);
+
       const user = await storage.createUser({
         username,
-        password,
+        password: hashedPassword,
         role: "provider",
         firstName,
         lastName,
