@@ -38,8 +38,28 @@ Preferred communication style: Simple, everyday language.
 
 **Key Design Decisions**:
 - Component-based architecture with reusable UI components in `/client/src/components/ui/`
-- Feature-specific components in `/client/src/components/` (JobCard, MessageList, etc.)
+- Feature-specific components in `/client/src/components/` (JobCard, MessageList, AIJobAssistant, etc.)
 - Path aliases configured for clean imports (@/ for client, @shared/ for shared code)
+
+**AI Job Assistant Component**:
+- Located at `/client/src/components/AIJobAssistant.tsx`
+- Provides AI-powered job analysis for providers/mechanics
+- Features:
+  - Vehicle information inputs (Year, Make, Model)
+  - Customer description textarea (pre-filled from job data)
+  - AI analysis trigger with loading states
+  - Results display:
+    - AI-generated job description
+    - Labor pricing (separate)
+    - Parts pricing (separate)
+    - Total cost breakdown
+    - Labor time estimate in hours
+    - Required parts list
+    - Step-by-step repair procedures
+    - Safety notes
+  - Save functionality to persist analysis to job
+- Integrated into Provider Dashboard via Bot icon button on accepted jobs
+- Uses OpenAI via Replit AI Integrations for intelligent analysis
 
 ### Backend Architecture
 
@@ -59,6 +79,12 @@ Preferred communication style: Simple, everyday language.
 - POST /api/provider/login - Authenticate provider
 - POST /api/provider/logout - Destroy provider session
 - GET /api/provider/verify - Verify current provider session
+
+**AI-Powered Job Analysis APIs**:
+- POST /api/ai/analyze-job - Generate AI-powered job analysis with pricing estimates
+  - Accepts: vehicleInfo (year, make, model), customerDescription, jobType
+  - Returns: jobDescription, estimatedCost (parts/labor/total), laborTimeHours, procedureSteps, requiredParts, requiredTools, safetyNotes
+  - Uses OpenAI via Replit AI Integrations
 
 **Scheduling & Payment APIs**:
 - POST /api/deposits/:jobId - Create deposit checkout session (admin only)
