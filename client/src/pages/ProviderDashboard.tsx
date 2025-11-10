@@ -8,10 +8,12 @@ import { StatsCard } from "@/components/StatsCard";
 import { JobCard } from "@/components/JobCard";
 import { PaymentModal } from "@/components/PaymentModal";
 import { JobCheckInOut } from "@/components/JobCheckInOut";
-import { Briefcase, Clock, DollarSign, CheckCircle2, Loader2 } from "lucide-react";
+import { AIJobAssistant } from "@/components/AIJobAssistant";
+import { Briefcase, Clock, DollarSign, CheckCircle2, Loader2, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { Job } from "@shared/schema";
 
@@ -20,6 +22,8 @@ export default function ProviderDashboard() {
   const [, setLocation] = useLocation();
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [aiAssistantOpen, setAIAssistantOpen] = useState(false);
+  const [selectedJobForAI, setSelectedJobForAI] = useState<Job | null>(null);
 
   const { data: authStatus, isLoading: authLoading } = useQuery<{ 
     authenticated: boolean; 
@@ -246,13 +250,25 @@ export default function ProviderDashboard() {
                             onMessage={handleMessage}
                           />
                           {job.status === "accepted" && (
-                            <Button
-                              className="w-full"
-                              onClick={() => handleInitiatePayment(job)}
-                              data-testid={`button-initiate-payment-${job.id}`}
-                            >
-                              Initiate Prepayment Contract
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                className="flex-1"
+                                onClick={() => handleInitiatePayment(job)}
+                                data-testid={`button-initiate-payment-${job.id}`}
+                              >
+                                Initiate Prepayment Contract
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedJobForAI(job);
+                                  setAIAssistantOpen(true);
+                                }}
+                                data-testid={`button-ai-assistant-${job.id}`}
+                              >
+                                <Bot className="h-4 w-4" />
+                              </Button>
+                            </div>
                           )}
                           {(job.status === "confirmed" || job.status === "accepted") && (
                             <JobCheckInOut
@@ -324,6 +340,30 @@ export default function ProviderDashboard() {
           }}
         />
       )}
+
+      <Dialog open={aiAssistantOpen} onOpenChange={setAIAssistantOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>AI Job Assistant</DialogTitle>
+            <DialogDescription>
+              Get AI-powered recommendations for this job including cost estimates, procedures, and parts needed.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedJobForAI && (
+            <AIJobAssistant
+              job={selectedJobForAI}
+              onSave={(analysis) => {
+                console.log("Saving analysis:", analysis);
+                setAIAssistantOpen(false);
+                toast({
+                  title: "Analysis Saved",
+                  description: "AI recommendations have been saved to the job record.",
+                });
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

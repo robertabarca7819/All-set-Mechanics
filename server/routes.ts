@@ -229,9 +229,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const randomNum = Math.floor(1000 + Math.random() * 9000);
       const employeeId = `EMP-${timestamp}-${randomNum}`;
 
+      const hashedPassword = await bcrypt.hash(password, 10);
+
       const user = await storage.createUser({
         username,
-        password,
+        password: hashedPassword,
         role: "provider",
         firstName,
         lastName,
@@ -277,7 +279,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { username, password } = schema.parse(req.body);
 
       const user = await storage.getUserByUsername(username);
-      if (!user || user.password !== password) {
+      if (!user) {
+        return res.status(401).json({ error: "Invalid username or password" });
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
         return res.status(401).json({ error: "Invalid username or password" });
       }
 
