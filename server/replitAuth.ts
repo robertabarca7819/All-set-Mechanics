@@ -13,10 +13,17 @@ const hasReplitAuthConfig = Boolean(
   process.env.REPL_ID &&
   process.env.SESSION_SECRET,
 );
+const isProduction = process.env.NODE_ENV === "production";
 
 if (!hasReplitAuthConfig) {
+  const message =
+    "Replit Auth environment variables are not fully configured. Set REPLIT_DOMAINS, REPL_ID, and SESSION_SECRET.";
+  if (isProduction) {
+    throw new Error(message);
+  }
+
   console.warn(
-    "Replit Auth environment variables are not fully configured. Authenticated routes will be disabled in development.",
+    `${message} Authenticated routes will be disabled while running in development.`,
   );
 }
 
@@ -115,6 +122,12 @@ async function upsertUser(claims: any) {
 
 export async function setupAuth(app: Express) {
   if (!hasReplitAuthConfig) {
+    if (isProduction) {
+      throw new Error(
+        "Replit Auth is required in production. Ensure REPLIT_DOMAINS, REPL_ID, and SESSION_SECRET are configured.",
+      );
+    }
+
     return;
   }
 
@@ -179,6 +192,13 @@ export async function setupAuth(app: Express) {
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   if (!hasReplitAuthConfig) {
+    if (isProduction) {
+      return res.status(500).json({
+        message:
+          "Replit Auth is misconfigured in production. Set REPLIT_DOMAINS, REPL_ID, and SESSION_SECRET to protect this route.",
+      });
+    }
+
     return next();
   }
 
