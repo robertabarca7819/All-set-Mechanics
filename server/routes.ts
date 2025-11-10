@@ -796,15 +796,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
 
-      const depositLinkToken = randomBytes(32).toString("hex");
-      await storage.updateJob(jobId, { 
+      await storage.updateJob(jobId, {
         depositCheckoutSessionId: session.id,
         status: "deposit_due",
       });
 
-      res.json({ 
+      res.json({
         sessionId: session.id,
-        depositLinkToken,
         checkoutUrl: session.url,
       });
     } catch (error) {
