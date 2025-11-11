@@ -6,8 +6,8 @@ import Stripe from "stripe";
 import { randomBytes } from "crypto";
 import cookieParser from "cookie-parser";
 import bcrypt from "bcrypt";
-import { storage } from "./storage";
-import { insertConversationSchema, insertMessageSchema, insertJobSchema } from "@shared/schema";
+import { storage, EmployeeIdConflictError } from "./storage";
+import { insertConversationSchema, insertMessageSchema, insertJobSchema, type User } from "@shared/schema";
 import { setupAuth, isAuthenticated, getUserIdFromClaims } from "./replitAuth";
 
 const wsClients = new Map<string, WebSocket>();
@@ -15,6 +15,14 @@ const wsClients = new Map<string, WebSocket>();
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const isProduction = process.env.NODE_ENV === "production";
 let stripe: Stripe | null = null;
+
+const MAX_EMPLOYEE_ID_ATTEMPTS = 5;
+
+function generateEmployeeIdCandidate(): string {
+  const timestamp = Date.now();
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  return `EMP-${timestamp}-${randomNum}`;
+}
 
 if (!stripeSecretKey) {
   console.warn(
@@ -28,7 +36,7 @@ if (!stripeSecretKey) {
   }
 
   try {
-    stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-06-20" });
+    stripe = new Stripe(stripeSecretKey);
   } catch (error) {
     console.error("Failed to initialize Stripe client:", error);
   }
@@ -225,21 +233,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ error: "Username already exists" });
       }
 
-      const timestamp = Date.now();
-      const randomNum = Math.floor(1000 + Math.random() * 9000);
-      const employeeId = `EMP-${timestamp}-${randomNum}`;
-
       const hashedPassword = await bcrypt.hash(password, 10);
+      let user: User | undefined;
+      let lastConflictError: EmployeeIdConflictError | undefined;
 
-      const user = await storage.createUser({
-        username,
-        password: hashedPassword,
-        role: "provider",
-        firstName,
-        lastName,
-        phoneNumber,
-        employeeId,
-      });
+      for (let attempt = 0; attempt < MAX_EMPLOYEE_ID_ATTEMPTS; attempt++) {
+        const employeeId = generateEmployeeIdCandidate();
+        try {
+          user = await storage.createUser({
+            username,
+            password: hashedPassword,
+            role: "provider",
+            firstName,
+            lastName,
+            phoneNumber,
+            employeeId,
+          });
+          break;
+        } catch (error) {
+          if (error instanceof EmployeeIdConflictError) {
+            lastConflictError = error;
+            continue;
+          }
+          throw error;
+        }
+      }
+
+      if (!user) {
+        throw lastConflictError ?? new Error("Failed to generate unique employee ID");
+      }
 
       const token = randomBytes(32).toString("hex");
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -257,14 +279,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         user: { id: user.id, username: user.username, role: user.role },
         employeeId: user.employeeId
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      if (error instanceof EmployeeIdConflictError) {
+        return res.status(500).json({ error: "Failed to generate a unique employee ID. Please try again." });
       }
       res.status(500).json({ error: "Registration failed" });
     }

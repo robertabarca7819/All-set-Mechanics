@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,7 @@ export default function CustomerQuickAccess() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
 
-  const { data: jobs, isLoading: jobsLoading, error } = useQuery({
+  const { data: jobs = [], isLoading: jobsLoading, error } = useQuery<Job[]>({
     queryKey: ["/api/customer/jobs-by-email"],
     enabled: isAuthenticated,
     retry: false,
@@ -118,7 +118,7 @@ export default function CustomerQuickAccess() {
           </CardContent>
           <CardFooter className="justify-center">
             <Link href="/" data-testid="link-back-home">
-              <Button variant="link" size="sm">
+              <Button variant="ghost" size="sm">
                 Back to Home
               </Button>
             </Link>
@@ -151,7 +151,7 @@ export default function CustomerQuickAccess() {
         </div>
 
         {/* Jobs List */}
-        {!jobs || jobs.length === 0 ? (
+        {jobs.length === 0 ? (
           <Card>
             <CardContent className="py-8">
               <div className="text-center">
@@ -170,7 +170,7 @@ export default function CustomerQuickAccess() {
           </Card>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1">
-            {(jobs as Job[]).map((job) => {
+            {jobs.map((job) => {
               const statusDisplay = getStatusDisplay(job.status);
               const StatusIcon = statusDisplay.icon;
 

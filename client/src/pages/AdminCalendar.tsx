@@ -181,7 +181,7 @@ export default function AdminCalendar() {
                                 )}
                               </div>
 
-                              {job.rescheduleCount > 0 && (
+                              {job.rescheduleCount != null && job.rescheduleCount > 0 && (
                                 <div className="mt-3 text-xs text-muted-foreground">
                                   Rescheduled {job.rescheduleCount} time{job.rescheduleCount !== 1 ? "s" : ""}
                                 </div>

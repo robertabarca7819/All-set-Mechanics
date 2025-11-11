@@ -11,6 +11,7 @@ export default function PaymentModalExample() {
       <PaymentModal
         open={open}
         onOpenChange={setOpen}
+        jobId="example-job-id"
         jobTitle="Front brake pads replacement"
         serviceType="Brake Service"
         subtotal={250}

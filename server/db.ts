@@ -7,6 +7,8 @@ neonConfig.webSocketConstructor = ws;
 
 const databaseUrl = process.env.DATABASE_URL;
 
+export type DatabaseConnection = NeonDatabase<typeof schema>;
+
 export const pool = databaseUrl
   ? new Pool({ connectionString: databaseUrl })
   : null;
@@ -29,10 +31,10 @@ if (pool) {
   });
 }
 
-export const db: NeonDatabase<typeof schema> | null = pool
+export const db: DatabaseConnection | null = pool
   ? drizzle({ client: pool, schema })
   : null;
 
-export function hasDatabaseConnection(): db is NeonDatabase<typeof schema> {
+export function hasDatabaseConnection(): boolean {
   return db !== null;
 }

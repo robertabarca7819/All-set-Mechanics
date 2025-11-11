@@ -1,7 +1,34 @@
 import { type User, type InsertUser, type Job, type InsertJob, type Conversation, type InsertConversation, type Message, type InsertMessage, type AdminSession, type InsertAdminSession, type ProviderSession, type InsertProviderSession, type CustomerSession, type InsertCustomerSession, type CustomerVerificationCode, type InsertCustomerVerificationCode, users, jobs, conversations, messages, adminSessions, providerSessions, customerSessions, customerVerificationCodes } from "@shared/schema";
 import { randomUUID } from "crypto";
-import { db, hasDatabaseConnection } from "./db";
-import { eq, and, or, desc, gte, lte } from "drizzle-orm";
+import { db, hasDatabaseConnection, type DatabaseConnection } from "./db";
+import { eq, and, or, desc, gte, lte, sql } from "drizzle-orm";
+
+const EMPLOYEE_ID_CONSTRAINT_NAME = "users_employee_id_unique";
+
+export class EmployeeIdConflictError extends Error {
+  constructor(employeeId: string) {
+    super(`Employee ID ${employeeId} already exists`);
+    this.name = "EmployeeIdConflictError";
+  }
+}
+
+function isEmployeeIdConstraintError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const { code, constraint, message, detail } = error as Record<string, unknown>;
+
+  if (code !== "23505") {
+    return false;
+  }
+
+  const textFields = [constraint, message, detail];
+
+  return textFields.some((field) =>
+    typeof field === "string" && field.includes(EMPLOYEE_ID_CONSTRAINT_NAME)
+  );
+}
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -47,9 +74,11 @@ export interface IStorage {
   createVerificationCode(code: InsertCustomerVerificationCode): Promise<CustomerVerificationCode>;
   getVerificationCodeByEmail(email: string): Promise<CustomerVerificationCode | undefined>;
   deleteVerificationCode(id: string): Promise<void>;
-  
+
   checkInMechanic(jobId: string): Promise<Job | undefined>;
   checkOutMechanic(jobId: string, jobNotes?: string): Promise<Job | undefined>;
+
+  ensureUniqueEmployeeIds?(): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -265,13 +294,23 @@ export class MemStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
+    if (insertUser.employeeId) {
+      const hasConflict = Array.from(this.users.values()).some(
+        (existingUser) => existingUser.employeeId === insertUser.employeeId
+      );
+      if (hasConflict) {
+        throw new EmployeeIdConflictError(insertUser.employeeId);
+      }
+    }
+
     const id = randomUUID();
-    const user: User = { 
+    const user: User = {
       ...insertUser,
       firstName: insertUser.firstName ?? null,
       lastName: insertUser.lastName ?? null,
       phoneNumber: insertUser.phoneNumber ?? null,
       employeeId: insertUser.employeeId ?? null,
+      profileImageUrl: insertUser.profileImageUrl ?? null,
       id,
       role: insertUser.role || "provider",
       createdAt: new Date()
@@ -607,7 +646,7 @@ export class MemStorage implements IStorage {
   async checkOutMechanic(jobId: string, jobNotes?: string): Promise<Job | undefined> {
     const job = this.jobs.get(jobId);
     if (!job) return undefined;
-    
+
     const now = new Date();
     const updatedJob = {
       ...job,
@@ -618,10 +657,44 @@ export class MemStorage implements IStorage {
     this.jobs.set(jobId, updatedJob);
     return updatedJob;
   }
+
+  async ensureUniqueEmployeeIds(): Promise<void> {
+    const seen = new Set<string>();
+
+    for (const id of Array.from(this.users.keys())) {
+      const user = this.users.get(id);
+      if (!user) {
+        continue;
+      }
+
+      const employeeId = user.employeeId;
+      if (!employeeId) {
+        continue;
+      }
+
+      if (!seen.has(employeeId)) {
+        seen.add(employeeId);
+        continue;
+      }
+
+      let replacement: string;
+      do {
+        const timestamp = Date.now();
+        const random = Math.floor(1000 + Math.random() * 9000);
+        replacement = `EMP-${timestamp}-${random}`;
+      } while (seen.has(replacement));
+
+      this.users.set(id, {
+        ...user,
+        employeeId: replacement,
+      });
+      seen.add(replacement);
+    }
+  }
 }
 
 export class DatabaseStorage implements IStorage {
-  constructor(private readonly db: NonNullable<typeof db>) {}
+  constructor(private readonly db: DatabaseConnection) {}
   async getUser(id: string): Promise<User | undefined> {
     const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
     return result[0];
@@ -633,8 +706,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const result = await this.db.insert(users).values(user).returning();
-    return result[0];
+    try {
+      const result = await this.db.insert(users).values(user).returning();
+      return result[0];
+    } catch (error) {
+      if (user.employeeId && isEmployeeIdConstraintError(error)) {
+        throw new EmployeeIdConflictError(user.employeeId);
+      }
+      throw error;
+    }
+  }
+
+  async ensureUniqueEmployeeIds(): Promise<void> {
+    await this.db
+      .update(users)
+      .set({ employeeId: null })
+      .where(eq(users.employeeId, ""));
+
+    await this.db.execute(sql`
+      WITH duplicates AS (
+        SELECT id, employee_id,
+               ROW_NUMBER() OVER (PARTITION BY employee_id ORDER BY created_at, id) AS rn
+        FROM users
+        WHERE employee_id IS NOT NULL
+      )
+      UPDATE users AS u
+      SET employee_id = CONCAT('EMP-', md5(random()::text || clock_timestamp()::text))
+      FROM duplicates d
+      WHERE u.id = d.id
+        AND d.rn > 1;
+    `);
   }
 
   async upsertUser(user: Partial<InsertUser> & { id: string }): Promise<User> {
@@ -891,7 +992,11 @@ export class DatabaseStorage implements IStorage {
 let storageImplementation: IStorage;
 
 if (hasDatabaseConnection() && db) {
-  storageImplementation = new DatabaseStorage(db);
+  const databaseStorage = new DatabaseStorage(db);
+  storageImplementation = databaseStorage;
+  void databaseStorage.ensureUniqueEmployeeIds?.().catch((error) => {
+    console.error("Failed to normalize employee IDs:", error);
+  });
 } else {
   storageImplementation = new MemStorage();
 }

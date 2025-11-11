@@ -9,12 +9,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { Header } from "@/components/Header";
 import { Link } from "wouter";
 import { CalendarDays, MapPin, DollarSign, LogOut, Mail, User, Wrench } from "lucide-react";
+import type { Job } from "@shared/schema";
 
 export default function QuickAccess() {
   const [, setLocation] = useLocation();
   const { user, isLoading: isLoadingAuth, isAuthenticated } = useAuth();
 
-  const { data: jobs, isLoading: isLoadingJobs } = useQuery({
+  const { data: jobs = [], isLoading: isLoadingJobs } = useQuery<Job[]>({
     queryKey: ["/api/customer/jobs-by-email"],
     enabled: isAuthenticated,
     retry: false,
@@ -94,7 +95,7 @@ export default function QuickAccess() {
         <div className="mb-6">
           <h2 className="text-xl font-semibold mb-4">Your Service Requests</h2>
           
-          {!jobs || jobs.length === 0 ? (
+          {jobs.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -116,7 +117,7 @@ export default function QuickAccess() {
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {jobs.map((job: any) => (
+              {jobs.map((job) => (
                 <Card key={job.id} className="hover-elevate" data-testid={`card-job-${job.id}`}>
                   <CardHeader>
                     <div className="flex items-center justify-between mb-2">

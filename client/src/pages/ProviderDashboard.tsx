@@ -8,7 +8,7 @@ import { StatsCard } from "@/components/StatsCard";
 import { JobCard } from "@/components/JobCard";
 import { PaymentModal } from "@/components/PaymentModal";
 import { JobCheckInOut } from "@/components/JobCheckInOut";
-import { AIJobAssistant } from "@/components/AIJobAssistant";
+import { AIJobAssistant, type AIAssistantAnalysis } from "@/components/AIJobAssistant";
 import { Briefcase, Clock, DollarSign, CheckCircle2, Loader2, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,7 +21,7 @@ export default function ProviderDashboard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [aiAssistantOpen, setAIAssistantOpen] = useState(false);
   const [selectedJobForAI, setSelectedJobForAI] = useState<Job | null>(null);
 
@@ -352,7 +352,7 @@ export default function ProviderDashboard() {
           {selectedJobForAI && (
             <AIJobAssistant
               job={selectedJobForAI}
-              onSave={(analysis) => {
+              onSave={(analysis: AIAssistantAnalysis) => {
                 console.log("Saving analysis:", analysis);
                 setAIAssistantOpen(false);
                 toast({
