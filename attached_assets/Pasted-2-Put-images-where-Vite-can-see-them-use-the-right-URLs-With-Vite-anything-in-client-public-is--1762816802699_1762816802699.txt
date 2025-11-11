@@ -1,0 +1,79 @@
+2) Put images where Vite can see them & use the right URLs
+
+With Vite, anything in client/public is served at the site root (/).
+
+Do this folder setup:
+
+client/
+  public/
+    img/
+      hero.jpg
+      mechanic-residential.jpg
+      van-setup.jpg
+
+Then reference them like this (note the leading slash):
+
+style={{ backgroundImage: "url(/img/hero.jpg)" }} 
+
+and in your PhotoStrip or anywhere else: 
+
+const items = [
+  { src: "/img/mechanic-residential.jpg", alt: "OnSite mechanic at residential service" },
+  { src: "/img/hero.jpg", alt: "Mobile service" },
+  { src: "/img/van-setup.jpg", alt: "Mobile van with organized tools" },
+];
+
+Cache gotcha on iPhone: if the image still won’t change, add a tiny cache-buster once (then remove later
+
+style={{ backgroundImage: "url(/img/hero.jpg?v=2)" }}
+
+
+⸻
+
+3) Make the site look brighter and cleaner (quick theme lift)
+
+You said the dark blue feels heavy. Here’s a simple, modern light backdrop:
+
+Global background (add to your main layout wrapper or body):
+
+<body class="min-h-screen bg-gradient-to-b from-slate-50 to-emerald-50">
+
+If you set a wrapper instead of body:
+
+<div className="min-h-screen bg-gradient-to-b from-slate-50 to-emerald-50">
+  {/* app content */}
+</div>
+
+Hero with readable overlay (keeps text crisp on photos
+
+<section
+  className="relative isolate h-[70vh] w-full bg-cover bg-center"
+  style={{ backgroundImage: "url(/img/hero.jpg)" }}
+>
+  <div className="absolute inset-0 bg-black/40" />
+  <div className="relative z-10 mx-auto flex h-full max-w-6xl items-center px-6">
+    <div className="text-white max-w-xl">
+      <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight">
+        Mobile Mechanics that come to you.
+      </h1>
+      <p className="mt-4 text-lg text-white/90">
+        Oil changes, brakes, diagnostics & more—at your driveway or workplace .
+      </p>
+      <div className="mt-6 flex gap-3">
+        <a href="/book" className="rounded-md bg-emerald-600 px-5 py-3 font-semibold text-white hover:bg-emerald-700 transition">
+          Book a Service
+        </a>
+        <a href="/pricing" className="rounded-md bg-white/10 px-5 py-3 font-semibold text-white hover:bg-white/20 transition">
+          Get Quote
+        </a>
+      </div>
+    </div>
+  </div>
+  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/30 to-transparent" />
+</section>
+
+Cards on light theme (so sections below don’t look washed out)
+
+<div className="rounded-2xl bg-white/70 backdrop-blur shadow-sm ring-1 ring-black/5">
+  {/* card content */}
+</div>
